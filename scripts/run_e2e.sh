@@ -31,7 +31,7 @@ free_port 8000
 free_port 3000
 
 source backend/.venv/bin/activate
-DATABASE_URL="sqlite:///$E2E_DB" QDRANT_LOCAL_MODE=true \
+DATABASE_URL="sqlite:///$E2E_DB" QDRANT_LOCAL_MODE=true RERANKER_PROVIDER=token_overlap \
   uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 >"$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 

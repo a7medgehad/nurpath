@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.schemas import EvidenceCard, Passage, TopicIntent
 from app.services.catalog import load_catalog
 from app.services.embeddings import Embedder, get_embedder
+from app.services.reranker import Reranker, get_reranker
 
 SOURCE_TYPE_PRIORITY = {
     "quran": 0.04,
@@ -49,6 +50,7 @@ class RetrievalResult:
     evidence_cards: List[EvidenceCard]
     intent: TopicIntent
     avg_top_score: float = 0.0
+    avg_rerank_score: float = 0.0
     used_expansion: bool = False
 
 
@@ -58,9 +60,17 @@ class HybridRetriever:
     def __init__(self) -> None:
         self.catalog = load_catalog()
         self.embedder: Embedder = get_embedder()
+        self.reranker: Reranker = get_reranker()
         self.client = self._build_client()
+        total_weight = settings.retrieval_lexical_weight + settings.retrieval_vector_weight
+        if total_weight <= 0:
+            raise ValueError("Retrieval weights must sum to a positive value.")
+        if not (0.0 <= settings.reranker_weight <= 1.0):
+            raise ValueError("Reranker weight must be in [0, 1].")
         self._top_scores: deque[float] = deque(maxlen=200)
         self._expansion_uses = 0
+        self._collection_vector_size = 0
+        self._reindex_required = False
         self._ensure_collection()
         self._upsert_passages()
 
@@ -95,12 +105,20 @@ class HybridRetriever:
             "retrieval_avg_top_score": round(avg, 4),
             "retrieval_observations": len(self._top_scores),
             "expansion_uses": self._expansion_uses,
+            "embedding_provider": self.embedder.provider_name,
+            "embedding_model_name": self.embedder.model_name,
+            "embedding_dimension": self.embedder.dimension,
+            "qdrant_collection_vector_size": self._collection_vector_size,
+            "reindex_required": self._reindex_required,
+            "reranker_enabled": self.reranker.enabled,
+            "reranker_provider": self.reranker.provider_name,
+            "reranker_model_name": self.reranker.model_name,
         }
 
     def _build_client(self) -> QdrantClient:
         if settings.qdrant_local_mode:
             return QdrantClient(location=":memory:")
-        return QdrantClient(url=settings.qdrant_url)
+        return QdrantClient(url=settings.qdrant_url, check_compatibility=False)
 
     def _is_qdrant_connected(self) -> bool:
         try:
@@ -111,12 +129,35 @@ class HybridRetriever:
 
     def _ensure_collection(self) -> None:
         existing = {c.name for c in self.client.get_collections().collections}
-        if settings.qdrant_collection in existing:
+        if settings.qdrant_collection not in existing:
+            self.client.create_collection(
+                collection_name=settings.qdrant_collection,
+                vectors_config=VectorParams(size=self.embedder.dimension, distance=Distance.COSINE),
+            )
+            self._collection_vector_size = self.embedder.dimension
             return
-        self.client.create_collection(
-            collection_name=settings.qdrant_collection,
-            vectors_config=VectorParams(size=self.embedder.dimension, distance=Distance.COSINE),
-        )
+
+        current_size = self._get_collection_vector_size(settings.qdrant_collection)
+        self._collection_vector_size = current_size
+        if current_size != self.embedder.dimension:
+            self._reindex_required = True
+            self.client.delete_collection(collection_name=settings.qdrant_collection)
+            self.client.create_collection(
+                collection_name=settings.qdrant_collection,
+                vectors_config=VectorParams(size=self.embedder.dimension, distance=Distance.COSINE),
+            )
+            self._collection_vector_size = self.embedder.dimension
+
+    def _get_collection_vector_size(self, collection_name: str) -> int:
+        info = self.client.get_collection(collection_name=collection_name)
+        vectors_cfg = info.config.params.vectors
+        if hasattr(vectors_cfg, "size"):
+            return int(vectors_cfg.size)
+        if isinstance(vectors_cfg, dict):
+            first = next(iter(vectors_cfg.values()), None)
+            if first is not None and hasattr(first, "size"):
+                return int(first.size)
+        return self.embedder.dimension
 
     def _upsert_passages(self) -> None:
         passages = list(self.catalog.passages.values())
@@ -124,7 +165,7 @@ class HybridRetriever:
             return
 
         texts = [f"{p.arabic_text}\n{p.english_text}" for p in passages]
-        vectors = self.embedder.embed(texts)
+        vectors = self.embedder.embed_passages(texts)
 
         points = [
             PointStruct(
@@ -167,7 +208,7 @@ class HybridRetriever:
         }
 
     def _vector_scores(self, question: str, limit: int) -> Dict[str, float]:
-        vector = self.embedder.embed([question])[0]
+        vector = self.embedder.embed_queries([question])[0]
         response = self.client.query_points(
             collection_name=settings.qdrant_collection,
             query=vector,
@@ -215,7 +256,7 @@ class HybridRetriever:
         lexical_top = sorted(lexical_scores, key=lexical_scores.get, reverse=True)[: max(limit * 2, 10)]
         candidate_ids = set(lexical_top).union(vector_scores.keys())
 
-        ranked: list[tuple[str, float]] = []
+        candidate_base_scores: list[tuple[str, float]] = []
         for passage_id in candidate_ids:
             lexical = lexical_scores.get(passage_id, 0.0)
             vector = vector_scores.get(passage_id, 0.0)
@@ -226,10 +267,43 @@ class HybridRetriever:
             passage_tags = {tag.lower() for tag in passage.topic_tags}
             intent_tags = INTENT_TAGS.get(intent, set())
             intent_bonus = 0.04 if passage_tags.intersection(intent_tags) else 0.0
-            combined = (0.45 * lexical) + (0.45 * vector) + priority_bonus + authenticity_bonus + intent_bonus
+            combined = (
+                (settings.retrieval_lexical_weight * lexical)
+                + (settings.retrieval_vector_weight * vector)
+                + priority_bonus
+                + authenticity_bonus
+                + intent_bonus
+            )
             if combined <= 0.0:
                 continue
-            ranked.append((passage_id, combined))
+            candidate_base_scores.append((passage_id, combined))
+
+        if not candidate_base_scores:
+            return []
+
+        candidate_base_scores.sort(key=lambda item: item[1], reverse=True)
+        limited = candidate_base_scores[: max(limit, 10)]
+        candidate_ids_ordered = [pid for pid, _ in limited]
+        candidate_passages = [
+            f"{self.catalog.passages[pid].arabic_text}\n{self.catalog.passages[pid].english_text}"
+            for pid in candidate_ids_ordered
+        ]
+        rerank_scores = self.reranker.rerank(question, candidate_passages)
+        rerank_lookup = {
+            pid: rerank_scores[idx] if idx < len(rerank_scores) else 0.0
+            for idx, pid in enumerate(candidate_ids_ordered)
+        }
+
+        ranked: list[tuple[str, float]] = []
+        for passage_id, base_score in limited:
+            rerank_score = rerank_lookup.get(passage_id, 0.0)
+            final_score = (
+                ((1 - settings.reranker_weight) * base_score)
+                + (settings.reranker_weight * rerank_score)
+            )
+            if final_score <= 0:
+                continue
+            ranked.append((passage_id, final_score))
 
         ranked.sort(key=lambda item: item[1], reverse=True)
         return ranked
@@ -313,13 +387,22 @@ class HybridRetriever:
             )
 
         avg_top_score = 0.0
+        avg_rerank_score = 0.0
         if chosen:
             avg_top_score = sum(score for _, score in chosen) / len(chosen)
+            rerank_inputs = [
+                f"{self.catalog.passages[passage_id].arabic_text}\n{self.catalog.passages[passage_id].english_text}"
+                for passage_id, _ in chosen
+            ]
+            rerank_scores = self.reranker.rerank(question, rerank_inputs)
+            if rerank_scores:
+                avg_rerank_score = sum(rerank_scores) / len(rerank_scores)
         self._top_scores.append(top_score)
 
         return RetrievalResult(
             evidence_cards=cards,
             intent=intent,
             avg_top_score=round(avg_top_score, 4),
+            avg_rerank_score=round(avg_rerank_score, 4),
             used_expansion=used_expansion,
         )

@@ -25,6 +25,14 @@ async def lifespan(_: FastAPI):
     init_db()
     retriever = get_retriever()
     diagnostics = retriever.diagnostics()
+    logger.info(
+        "Embeddings active: provider=%s model=%s dimension=%s",
+        diagnostics["embedding_provider"],
+        diagnostics["embedding_model_name"],
+        diagnostics["embedding_dimension"],
+    )
+    if diagnostics["reindex_required"]:
+        logger.warning("Qdrant collection dimension mismatch detected; collection was recreated.")
     if profile == "docker-first" and not diagnostics["qdrant_connected"]:
         raise RuntimeError("Qdrant is unreachable in docker-first mode.")
     seed_catalog_to_db()

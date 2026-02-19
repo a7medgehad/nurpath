@@ -27,3 +27,13 @@ def test_retrieval_health_sample_keeps_citation_integrity() -> None:
         confidence=0.7,
     )
     assert CitationValidator.validate_response(response)
+
+
+def test_dimension_mismatch_recreates_collection() -> None:
+    retriever = HybridRetriever()
+    first = retriever.diagnostics()
+    assert first["qdrant_collection_vector_size"] == retriever.embedder.dimension
+    assert isinstance(first["reindex_required"], bool)
+    assert isinstance(first["reranker_enabled"], bool)
+    assert isinstance(first["reranker_provider"], str)
+    assert isinstance(first["reranker_model_name"], str)

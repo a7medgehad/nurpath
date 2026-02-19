@@ -202,6 +202,14 @@ class RetrievalHealthResponse(BaseModel):
     profile: str
     qdrant_connected: bool
     postgres_connected: bool
+    embedding_provider: str
+    embedding_model_name: str
+    embedding_dimension: int
+    reranker_enabled: bool
+    reranker_provider: str
+    reranker_model_name: str
+    qdrant_collection_vector_size: int
+    reindex_required: bool
     citations_valid: bool
     indexed_passages: int
     retrieval_avg_top_score: float

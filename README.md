@@ -11,9 +11,9 @@ Most assistants flatten differences into a single answer. NurPath keeps disagree
 ## Key Features
 
 - Multi-agent tutoring flow (Intent -> Retrieve -> Compare -> Tutor -> Safety)
-- Hybrid retrieval (Qdrant vector search + lexical ranking fusion)
+- Hybrid retrieval (keyword + semantic + reranking)
 - Retrieval resilience (query expansion fallback + source-diversity selection)
-- Embedding provider abstraction (offline hash default, optional sentence-transformers)
+- E5-first embedding stack (`intfloat/multilingual-e5-large`) with optional Swan experiments
 - Structured ikhtilaf detector (consensus/disagreement status + conflict pair metadata)
 - Curated Quran + Sunnah + معتبر fiqh core corpus with authenticity metadata
 - Open/PD allowlist enforcement in catalog loading
@@ -30,7 +30,7 @@ Most assistants flatten differences into a single answer. NurPath keeps disagree
 - `docs/` technical architecture and policies
 - `data/` curated sample corpus + allowlist metadata
 - `eval/` evaluation dataset and script
-- `scripts/` smoke, E2E, and architecture generation helpers
+- `scripts/` smoke, E2E, architecture generation, and embedding reindex helpers
 
 ## API Endpoints
 
@@ -110,6 +110,14 @@ Frontend expects backend at `http://localhost:8000`.
 
 This script runs backend/frontend in a deterministic local test profile, then executes Playwright.
 
+### 5) Explicit embedding reindex
+
+```bash
+./scripts/reindex_embeddings.sh
+```
+
+Use this after changing `EMBEDDING_MODEL_NAME` or `EMBEDDING_DIMENSION`.
+
 ## Quality and Test Commands
 
 ### Backend
@@ -146,12 +154,18 @@ Important retrieval-related keys:
 - `QDRANT_URL`
 - `QDRANT_COLLECTION`
 - `QDRANT_LOCAL_MODE`
-- `EMBEDDING_PROVIDER` (`hash` or `sentence_transformers`)
-- `EMBEDDING_MODEL_NAME`
-- `EMBEDDING_DIMENSION`
+- `EMBEDDING_PROVIDER` (`sentence_transformers` default, `hash` fallback)
+- `EMBEDDING_MODEL_NAME` (default: `intfloat/multilingual-e5-large`)
+- `EMBEDDING_DIMENSION` (default: `1024`)
 - `GROUNDING_THRESHOLD`
 - `FAITHFULNESS_THRESHOLD`
 - `WEAK_RETRIEVAL_THRESHOLD`
+- `RETRIEVAL_VECTOR_WEIGHT`
+- `RETRIEVAL_LEXICAL_WEIGHT`
+- `RERANKER_ENABLED`
+- `RERANKER_PROVIDER`
+- `RERANKER_MODEL_NAME`
+- `RERANKER_WEIGHT`
 
 ### Runtime Profiles
 
@@ -159,6 +173,13 @@ Important retrieval-related keys:
 |---|---|---|
 | `docker-first` (default) | production-like local run with Docker services | `QDRANT_LOCAL_MODE=false`, `DATABASE_URL=postgresql+psycopg://...` |
 | `local` (fallback) | offline dev/testing | `QDRANT_LOCAL_MODE=true`, `DATABASE_URL=sqlite:///...` |
+
+### Embedding Profiles
+
+| Profile | Model | Status |
+|---|---|---|
+| `E5` (default) | `intfloat/multilingual-e5-large` | recommended for production retrieval |
+| `Swan` (experimental) | set `EMBEDDING_MODEL_NAME=<swan-model-id>` | optional experiment path |
 
 ## Validation Gate
 
@@ -185,9 +206,12 @@ make generate-mermaid
 ## Troubleshooting
 
 - **No answer appears / frequent abstains**:
-  - Check `GET /v1/health/retrieval` for `qdrant_connected`, `postgres_connected`, and `retrieval_avg_top_score`.
+  - Check `GET /v1/health/retrieval` for `qdrant_connected`, `postgres_connected`, `embedding_model_name`, `reranker_model_name`, and `retrieval_avg_top_score`.
   - Lower `GROUNDING_THRESHOLD` / `FAITHFULNESS_THRESHOLD` slightly only after reviewing eval output.
   - Confirm corpus passages include `passage_url` and valid `reference`.
+- **Changed embedding model but retrieval degraded**:
+  - Rebuild vectors with `./scripts/reindex_embeddings.sh`.
+  - Verify `qdrant_collection_vector_size` matches `embedding_dimension` in retrieval health.
 - **Evidence link opens only source root**:
   - Ensure evidence card uses `passage_url` (not `source_url`).
   - Re-index after corpus updates.
