@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_citation_validator, get_pipeline, get_quiz_service, get_retriever, get_sessions
+from app.api.deps import (
+    get_citation_validator,
+    get_pipeline,
+    get_quiz_service,
+    get_retriever,
+    get_sessions,
+)
 from app.schemas import (
     AskRequest,
     AskResponse,
@@ -11,8 +17,8 @@ from app.schemas import (
     RetrievalHealthResponse,
     SessionCreateRequest,
     SessionCreateResponse,
-    SourceListResponse,
     SourceDocument,
+    SourceListResponse,
 )
 from app.services.catalog import count_passages_in_db, filter_sources, load_catalog
 from app.services.citation import CitationValidator

@@ -58,6 +58,20 @@ npm run dev
 
 The frontend expects backend at `http://localhost:8000`.
 
+## Quality Gates (Local)
+
+```bash
+make backend-lint
+make backend-cov
+cd frontend && npm run lint && npm run typecheck && npm run build
+```
+
+With backend running:
+
+```bash
+make smoke
+```
+
 ## Open-Source / Free Tooling
 
 - FastAPI + Pydantic + SQLModel

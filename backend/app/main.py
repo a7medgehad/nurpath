@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.db import init_db
 from app.services.catalog import seed_catalog_to_db
 
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()

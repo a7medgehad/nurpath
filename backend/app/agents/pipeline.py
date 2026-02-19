@@ -5,7 +5,13 @@ from typing import List, Optional, TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from app.core.config import settings
-from app.schemas import AskResponse, EvidenceCard, LearningObjective, OpinionComparisonItem, TopicIntent
+from app.schemas import (
+    AskResponse,
+    EvidenceCard,
+    LearningObjective,
+    OpinionComparisonItem,
+    TopicIntent,
+)
 from app.services.learning import SessionManager
 from app.services.retrieval import HybridRetriever, RetrievalResult
 
