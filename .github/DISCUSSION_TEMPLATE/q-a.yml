@@ -1,0 +1,5 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask architecture, retrieval, or safety questions. Include context and expected outcome.

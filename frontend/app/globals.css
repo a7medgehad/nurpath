@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f5ede2;
+  --ink: #1a1e2a;
+  --accent: #007d7d;
+  --warm: #a2673f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(162, 103, 63, 0.25), transparent 40%),
+    radial-gradient(circle at 90% 10%, rgba(0, 125, 125, 0.18), transparent 35%),
+    linear-gradient(160deg, #fdf8f2 0%, #f5ede2 45%, #efe2d2 100%);
+  color: var(--ink);
+  min-height: 100%;
+  font-family: "Cairo", "Noto Naskh Arabic", sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Literata", "Amiri", serif;
+}
+
+.card-enter {
+  animation: rise 500ms ease both;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

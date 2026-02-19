@@ -1,0 +1,37 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# Node
+node_modules/
+.next/
+out/
+
+# Env
+.env
+.env.*
+
+# Logs
+*.log
+
+# Data and local artifacts
+data/raw/
+data/processed/
+*.sqlite
+*.db
+
+# Tooling
+.vscode/
+.idea/
+
+# Local-only planning/notes (never commit)
+.local/
+*.tsbuildinfo

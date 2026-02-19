@@ -1,0 +1,62 @@
+[
+  {
+    "id": "src_quran_49_13",
+    "title": "Qur'an 49:13",
+    "author": "Canonical Qur'anic Text",
+    "era": "7th century",
+    "language": "ar",
+    "license": "Public Domain",
+    "url": "https://corpus.quran.com/translation.jsp?chapter=49&verse=13",
+    "citation_policy": "Quote exact verse span and include translation source when available.",
+    "passages": [
+      {
+        "id": "p_quran_49_13",
+        "arabic_text": "يَا أَيُّهَا النَّاسُ إِنَّا خَلَقْنَاكُمْ مِنْ ذَكَرٍ وَأُنثَىٰ",
+        "english_text": "O humankind, indeed We created you from a male and a female...",
+        "topic_tags": ["akhlaq", "humanity", "adab"]
+      }
+    ]
+  },
+  {
+    "id": "src_nawawi_1",
+    "title": "Hadith Jibril (40 Nawawi)",
+    "author": "Imam al-Nawawi",
+    "era": "13th century",
+    "language": "ar",
+    "license": "Public Domain",
+    "url": "https://sunnah.com/nawawi40:2",
+    "citation_policy": "Identify hadith collection reference and avoid weak attributions.",
+    "passages": [
+      {
+        "id": "p_nawawi_jibril",
+        "arabic_text": "أَنْ تَعْبُدَ اللَّهَ كَأَنَّكَ تَرَاهُ...",
+        "english_text": "To worship Allah as though you see Him...",
+        "topic_tags": ["aqidah", "ihsan", "iman", "islam"]
+      }
+    ]
+  },
+  {
+    "id": "src_fiqh_wudu_compare",
+    "title": "Comparative Fiqh: Wudu touching spouse",
+    "author": "Compiled educational notes",
+    "era": "Contemporary educational",
+    "language": "ar-en",
+    "license": "CC-BY-4.0",
+    "url": "https://example.org/fiqh/wudu-comparison",
+    "citation_policy": "Present multiple schools fairly and attach each claim to school-tagged evidence.",
+    "passages": [
+      {
+        "id": "p_wudu_shafii",
+        "arabic_text": "يرى الشافعية أن لمس المرأة الأجنبية ينقض الوضوء عند وجود اللمس المباشر.",
+        "english_text": "Shafi'i jurists generally consider direct skin contact with a non-mahram to invalidate wudu.",
+        "topic_tags": ["fiqh", "wudu", "ikhtilaf", "shafii"]
+      },
+      {
+        "id": "p_wudu_hanafi",
+        "arabic_text": "يرى الحنفية أن اللمس وحده لا ينقض الوضوء ما لم يصحبه خروج ناقض.",
+        "english_text": "Hanafi jurists generally do not treat touching alone as nullifying wudu unless another nullifier occurs.",
+        "topic_tags": ["fiqh", "wudu", "ikhtilaf", "hanafi"]
+      }
+    ]
+  }
+]

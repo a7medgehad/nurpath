@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: nurpath
+      POSTGRES_USER: nurpath
+      POSTGRES_PASSWORD: nurpath
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+volumes:
+  qdrant_data:
+  pg_data:
