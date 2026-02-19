@@ -92,6 +92,14 @@ make smoke
 
 NurPath is educational software. It does not replace qualified scholarship or legal/religious counsel.
 
+## API Smoke Example
+
+```bash
+curl -X POST http://localhost:8000/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"preferred_language":"en","level":"beginner","goals":["learn wudu"]}'
+```
+
 ## License
 
 MIT
