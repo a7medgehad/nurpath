@@ -21,9 +21,17 @@ Only ingest sources with clear permission for storage, transformation, and model
 - `source_url`
 - `license_name`
 - `license_url`
-- `attribution_text`
 - `verification_date`
+- `authenticity_source`
+- `review_notes`
 
 ## Enforcement
 
-The ingestion job rejects rows missing any required metadata fields.
+The ingestion job rejects:
+- allowlist rows missing required metadata fields
+- source entries missing Arabic display metadata (`title_ar`, `citation_policy_ar`)
+- source entries without `status=approved` in allowlist
+- source entries missing structured authenticity references by source type:
+  - Quran: `surah`, `ayah`
+  - Hadith: `collection`, `book`, `hadith_number`, `grading_authority`
+  - Fiqh: `book`, `volume`, `page`, `madhhab`

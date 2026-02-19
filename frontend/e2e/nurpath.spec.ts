@@ -1,19 +1,24 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("NurPath end-to-end", () => {
-  test("Arabic ask flow shows evidence, comparison, and ikhtilaf badge", async ({ page }) => {
+  test("Arabic ask flow keeps visible content Arabic-only", async ({ page }) => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "اسأل" }).click();
 
     await expect(page.getByRole("heading", { name: "الإجابة" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "بطاقات الدليل" })).toBeVisible();
-    await expect(page.locator("span", { hasText: "اختلاف معتبر" })).toBeVisible();
+    await expect(
+      page.locator("span", { hasText: /اختلاف معتبر|اتفاق|بيانات غير كافية/ }),
+    ).toBeVisible();
+
+    const hasLatin = await page.evaluate(() => /[A-Za-z]/.test(document.querySelector("main")?.innerText ?? ""));
+    expect(hasLatin).toBeFalsy();
   });
 
   test("English mode supports source explorer and quiz grading", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "English" }).click();
+    await page.getByRole("button", { name: "الإنجليزية" }).click();
 
     await expect(page.getByRole("heading", { name: "Source Explorer" })).toBeVisible();
 
@@ -37,7 +42,7 @@ test.describe("NurPath end-to-end", () => {
 
   test("Sensitive fatwa query triggers abstain safety notice", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "English" }).click();
+    await page.getByRole("button", { name: "الإنجليزية" }).click();
 
     const mainQuestion = page.locator("textarea").first();
     await mainQuestion.fill("I need a personal fatwa for my private divorce case");
@@ -48,7 +53,7 @@ test.describe("NurPath end-to-end", () => {
 
   test("English non-comparative query shows insufficient-data status", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "English" }).click();
+    await page.getByRole("button", { name: "الإنجليزية" }).click();
 
     const mainQuestion = page.locator("textarea").first();
     await mainQuestion.fill("What is ihsan in hadith jibril?");

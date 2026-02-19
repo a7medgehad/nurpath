@@ -66,6 +66,21 @@ class NurPathAgentPipeline:
         return state
 
     def _compare_node(self, state: TutorState) -> TutorState:
+        if state["intent"] != TopicIntent.fiqh:
+            if state["preferred_language"] == "ar":
+                summary = "لا توجد أدلة كافية عبر مدارس متعددة للحكم باتفاق أو اختلاف."
+            else:
+                summary = "Not enough cross-school evidence to classify consensus or disagreement."
+            state["opinion_comparison"] = []
+            state["ikhtilaf_analysis"] = IkhtilafAnalysis(
+                status="insufficient",
+                summary=summary,
+                compared_schools=[],
+                shared_topic_tags=[],
+                conflict_pairs=[],
+            )
+            return state
+
         cards = state["evidence_cards"]
         detection = analyze_ikhtilaf(
             evidence_cards=cards,

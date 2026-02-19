@@ -1,4 +1,13 @@
-source_id,license_name,license_url,verified_by,verification_date,status
-src_quran_49_13,Public Domain,https://corpus.quran.com/,maintainer,2026-02-19,approved
-src_nawawi_1,Public Domain,https://sunnah.com/nawawi40:2,maintainer,2026-02-19,approved
-src_fiqh_wudu_compare,CC-BY-4.0,https://creativecommons.org/licenses/by/4.0/,maintainer,2026-02-19,approved
+source_id,license_name,license_url,verified_by,verification_date,status,authenticity_source,review_notes
+src_quran_5_6,Public Domain,https://quran.com,maintainer,2026-02-19,approved,Quran canonical text,Ayah-level citation verified
+src_quran_2_183,Public Domain,https://quran.com,maintainer,2026-02-19,approved,Quran canonical text,Ayah-level citation verified
+src_quran_49_13,Public Domain,https://quran.com,maintainer,2026-02-19,approved,Quran canonical text,Ayah-level citation verified
+src_quran_4_43,Public Domain,https://quran.com,maintainer,2026-02-19,approved,Quran canonical text,Ayah-level citation verified
+src_bukhari_1,Public Domain,https://sunnah.com,maintainer,2026-02-19,approved,Sahih al-Bukhari,Matched collection and numbering
+src_bukhari_135,Public Domain,https://sunnah.com,maintainer,2026-02-19,approved,Sahih al-Bukhari,Matched collection and numbering
+src_muslim_8,Public Domain,https://sunnah.com,maintainer,2026-02-19,approved,Sahih Muslim,Matched collection and numbering
+src_nawawi_12,Public Domain,https://sunnah.com,maintainer,2026-02-19,approved,Imam al-Nawawi grading,Marked hasan in scholarly sources
+src_al_umm_wudu,Public Domain,https://shamela.ws,maintainer,2026-02-19,approved,Classical fiqh source,Bibliographic reference verified
+src_al_hidaya_wudu,Public Domain,https://shamela.ws,maintainer,2026-02-19,approved,Classical fiqh source,Bibliographic reference verified
+src_bidayat_wudu,Public Domain,https://shamela.ws,maintainer,2026-02-19,approved,Classical fiqh source,Bibliographic reference verified
+src_al_mughni_wudu,Public Domain,https://shamela.ws,maintainer,2026-02-19,approved,Classical fiqh source,Bibliographic reference verified

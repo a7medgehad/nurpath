@@ -31,6 +31,8 @@ def test_session_and_ask_flow() -> None:
         assert "ikhtilaf_analysis" in body
         assert isinstance(body["confidence"], float)
         assert len(body["evidence_cards"]) >= 1
+        assert "source_type" in body["evidence_cards"][0]
+        assert "authenticity_level" in body["evidence_cards"][0]
 
 
 def test_get_session() -> None:
@@ -77,6 +79,7 @@ def test_retrieval_health() -> None:
         assert body["citations_valid"] is True
         assert body["indexed_passages"] > 0
         assert any("Embedding provider=" in note for note in body["notes"])
+        assert any("Source types indexed=" in note for note in body["notes"])
 
 
 def test_source_lookup() -> None:
@@ -99,6 +102,41 @@ def test_source_list_filtering() -> None:
         ar_sources = client.get("/v1/sources?language=ar")
         assert ar_sources.status_code == 200
         assert ar_sources.json()["total"] >= 1
+
+        quran_sources = client.get("/v1/sources?source_type=quran")
+        assert quran_sources.status_code == 200
+        assert quran_sources.json()["total"] >= 1
+
+        sahih_sources = client.get("/v1/sources?authenticity_level=sahih")
+        assert sahih_sources.status_code == 200
+        assert sahih_sources.json()["total"] >= 1
+
+        ar_ui = client.get("/v1/sources?ui_language=ar")
+        assert ar_ui.status_code == 200
+        items = ar_ui.json()["items"]
+        assert len(items) >= 1
+        assert any(item["title"] == item["title_ar"] for item in items)
+
+
+def test_arabic_ask_returns_arabic_display_titles() -> None:
+    with get_client() as client:
+        session = client.post(
+            "/v1/sessions",
+            json={"preferred_language": "ar", "level": "beginner", "goals": ["الفقه"]},
+        )
+        sid = session.json()["session_id"]
+        ask = client.post(
+            "/v1/ask",
+            json={
+                "session_id": sid,
+                "question": "ما حكم لمس المرأة في الوضوء؟",
+                "preferred_language": "ar",
+            },
+        )
+        assert ask.status_code == 200
+        cards = ask.json()["evidence_cards"]
+        assert len(cards) >= 1
+        assert all(card["source_title_ar"] for card in cards)
 
 
 def test_quiz_updates_mastery() -> None:

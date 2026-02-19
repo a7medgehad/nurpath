@@ -14,6 +14,9 @@ Most assistants flatten differences into a single answer. NurPath keeps disagree
 - Hybrid retrieval (Qdrant vector search + lexical ranking fusion)
 - Embedding provider abstraction (offline hash default, optional sentence-transformers)
 - Structured ikhtilaf detector (consensus/disagreement status + conflict pair metadata)
+- Curated Quran + Sunnah + معتبر fiqh core corpus with authenticity metadata
+- Open/PD allowlist enforcement in catalog loading
+- Strict Arabic-mode rendering (no visible Latin text on Arabic page content)
 - Citation-span validation guard
 - Session roadmap + quiz generation + mastery updates
 - Arabic/English UI with RTL/LTR support
@@ -47,6 +50,14 @@ Most assistants flatten differences into a single answer. NurPath keeps disagree
 - `confidence`
 - `safety_notice`
 - `abstained`
+
+`GET /v1/sources` supports filters:
+- `language`
+- `topic`
+- `q`
+- `source_type` (`quran` | `hadith` | `fiqh`)
+- `authenticity_level`
+- `ui_language` (`ar` | `en`)
 
 ## Quick Start
 

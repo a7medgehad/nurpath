@@ -6,7 +6,7 @@ from typing import Dict, List, Sequence
 
 from app.schemas import ConflictPair, EvidenceCard, IkhtilafAnalysis, OpinionComparisonItem, Passage
 
-SCHOOL_DISPLAY = {
+SCHOOL_DISPLAY_EN = {
     "hanafi": "Hanafi",
     "shafii": "Shafi'i",
     "maliki": "Maliki",
@@ -14,7 +14,24 @@ SCHOOL_DISPLAY = {
     "jafari": "Ja'fari",
     "zahiri": "Zahiri",
 }
-SCHOOL_TAGS = set(SCHOOL_DISPLAY.keys())
+SCHOOL_DISPLAY_AR = {
+    "hanafi": "الحنفي",
+    "shafii": "الشافعي",
+    "maliki": "المالكي",
+    "hanbali": "الحنبلي",
+    "jafari": "الجعفري",
+    "zahiri": "الظاهري",
+}
+SCHOOL_TAGS = set(SCHOOL_DISPLAY_EN.keys())
+
+TOPIC_LABEL_AR = {
+    "fiqh": "الفقه",
+    "aqidah": "العقيدة",
+    "akhlaq": "الأخلاق",
+    "history": "التاريخ",
+    "wudu": "الوضوء",
+    "general": "المسألة",
+}
 
 NEGATIVE_STANCE_TOKENS = (
     "does not nullify",
@@ -26,9 +43,11 @@ NEGATIVE_STANCE_TOKENS = (
 )
 POSITIVE_STANCE_TOKENS = (
     "invalidate wudu",
+    "invalidating wudu",
     "nullifying wudu",
     "nullify wudu",
     "ينقض الوضوء",
+    "ناقض للوضوء",
 )
 TOPIC_NOISE_TAGS = SCHOOL_TAGS.union({"ikhtilaf"})
 
@@ -91,6 +110,14 @@ def _stance_summary(stance: str, preferred_language: str) -> str:
     )
 
 
+def _school_label(school_key: str, preferred_language: str) -> str:
+    return (
+        SCHOOL_DISPLAY_AR.get(school_key, school_key)
+        if preferred_language == "ar"
+        else SCHOOL_DISPLAY_EN.get(school_key, school_key)
+    )
+
+
 def _build_summary(status: str, preferred_language: str, topic: str, schools: List[str]) -> str:
     if preferred_language == "en":
         if status == "ikhtilaf":
@@ -105,10 +132,11 @@ def _build_summary(status: str, preferred_language: str, topic: str, schools: Li
             )
         return "Not enough cross-school evidence to classify consensus or disagreement."
 
+    topic_ar = TOPIC_LABEL_AR.get(topic, topic)
     if status == "ikhtilaf":
-        return f"تم رصد اختلاف معتبر في '{topic}' بين: " + "، ".join(schools) + "."
+        return f"تم رصد اختلاف معتبر في '{topic_ar}' بين: " + "، ".join(schools) + "."
     if status == "consensus":
-        return f"يوجد اتفاق بين أكثر من مذهب في '{topic}': " + "، ".join(schools) + "."
+        return f"يوجد اتفاق بين أكثر من مذهب في '{topic_ar}': " + "، ".join(schools) + "."
     return "لا توجد أدلة كافية عبر مدارس متعددة للحكم باتفاق أو اختلاف."
 
 
@@ -153,7 +181,7 @@ def analyze_ikhtilaf(
         opinion = opinions[school_key]
         opinion_comparison.append(
             OpinionComparisonItem(
-                school_or_scholar=SCHOOL_DISPLAY[school_key],
+                school_or_scholar=_school_label(school_key, preferred_language),
                 stance_summary=_stance_summary(opinion.stance, preferred_language),
                 stance_type=opinion.stance,
                 evidence_passage_ids=sorted(set(opinion.evidence_ids)),
@@ -170,7 +198,7 @@ def analyze_ikhtilaf(
         )
         return IkhtilafDetectionResult(opinion_comparison=opinion_comparison, analysis=analysis)
 
-    compared_school_names = [SCHOOL_DISPLAY[k] for k in sorted(opinions.keys())]
+    compared_school_names = [_school_label(k, preferred_language) for k in sorted(opinions.keys())]
     topic_sets = [entry.topic_tags for entry in opinions.values() if entry.topic_tags]
     if topic_sets:
         shared_tags = sorted(set.intersection(*topic_sets)) if len(topic_sets) > 1 else sorted(topic_sets[0])
@@ -195,8 +223,8 @@ def analyze_ikhtilaf(
                 continue
             conflict_pairs.append(
                 ConflictPair(
-                    school_a=SCHOOL_DISPLAY[school_a],
-                    school_b=SCHOOL_DISPLAY[school_b],
+                    school_a=_school_label(school_a, preferred_language),
+                    school_b=_school_label(school_b, preferred_language),
                     issue_topic=issue_topic,
                     evidence_passage_ids=sorted(set(a.evidence_ids + b.evidence_ids)),
                 )
