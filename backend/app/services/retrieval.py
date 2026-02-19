@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.schemas import EvidenceCard, Passage, TopicIntent
 from app.services.catalog import load_catalog
 from app.services.embeddings import Embedder, get_embedder
+from app.services.reranker import Reranker, get_reranker
 
 SOURCE_TYPE_PRIORITY = {
     "quran": 0.04,
@@ -49,6 +50,7 @@ class RetrievalResult:
     evidence_cards: List[EvidenceCard]
     intent: TopicIntent
     avg_top_score: float = 0.0
+    avg_rerank_score: float = 0.0
     used_expansion: bool = False
 
 
@@ -58,10 +60,13 @@ class HybridRetriever:
     def __init__(self) -> None:
         self.catalog = load_catalog()
         self.embedder: Embedder = get_embedder()
+        self.reranker: Reranker = get_reranker()
         self.client = self._build_client()
         total_weight = settings.retrieval_lexical_weight + settings.retrieval_vector_weight
         if total_weight <= 0:
             raise ValueError("Retrieval weights must sum to a positive value.")
+        if not (0.0 <= settings.reranker_weight <= 1.0):
+            raise ValueError("Reranker weight must be in [0, 1].")
         self._top_scores: deque[float] = deque(maxlen=200)
         self._expansion_uses = 0
         self._collection_vector_size = 0
@@ -105,6 +110,9 @@ class HybridRetriever:
             "embedding_dimension": self.embedder.dimension,
             "qdrant_collection_vector_size": self._collection_vector_size,
             "reindex_required": self._reindex_required,
+            "reranker_enabled": self.reranker.enabled,
+            "reranker_provider": self.reranker.provider_name,
+            "reranker_model_name": self.reranker.model_name,
         }
 
     def _build_client(self) -> QdrantClient:
@@ -248,7 +256,7 @@ class HybridRetriever:
         lexical_top = sorted(lexical_scores, key=lexical_scores.get, reverse=True)[: max(limit * 2, 10)]
         candidate_ids = set(lexical_top).union(vector_scores.keys())
 
-        ranked: list[tuple[str, float]] = []
+        candidate_base_scores: list[tuple[str, float]] = []
         for passage_id in candidate_ids:
             lexical = lexical_scores.get(passage_id, 0.0)
             vector = vector_scores.get(passage_id, 0.0)
@@ -268,7 +276,34 @@ class HybridRetriever:
             )
             if combined <= 0.0:
                 continue
-            ranked.append((passage_id, combined))
+            candidate_base_scores.append((passage_id, combined))
+
+        if not candidate_base_scores:
+            return []
+
+        candidate_base_scores.sort(key=lambda item: item[1], reverse=True)
+        limited = candidate_base_scores[: max(limit, 10)]
+        candidate_ids_ordered = [pid for pid, _ in limited]
+        candidate_passages = [
+            f"{self.catalog.passages[pid].arabic_text}\n{self.catalog.passages[pid].english_text}"
+            for pid in candidate_ids_ordered
+        ]
+        rerank_scores = self.reranker.rerank(question, candidate_passages)
+        rerank_lookup = {
+            pid: rerank_scores[idx] if idx < len(rerank_scores) else 0.0
+            for idx, pid in enumerate(candidate_ids_ordered)
+        }
+
+        ranked: list[tuple[str, float]] = []
+        for passage_id, base_score in limited:
+            rerank_score = rerank_lookup.get(passage_id, 0.0)
+            final_score = (
+                ((1 - settings.reranker_weight) * base_score)
+                + (settings.reranker_weight * rerank_score)
+            )
+            if final_score <= 0:
+                continue
+            ranked.append((passage_id, final_score))
 
         ranked.sort(key=lambda item: item[1], reverse=True)
         return ranked
@@ -352,13 +387,22 @@ class HybridRetriever:
             )
 
         avg_top_score = 0.0
+        avg_rerank_score = 0.0
         if chosen:
             avg_top_score = sum(score for _, score in chosen) / len(chosen)
+            rerank_inputs = [
+                f"{self.catalog.passages[passage_id].arabic_text}\n{self.catalog.passages[passage_id].english_text}"
+                for passage_id, _ in chosen
+            ]
+            rerank_scores = self.reranker.rerank(question, rerank_inputs)
+            if rerank_scores:
+                avg_rerank_score = sum(rerank_scores) / len(rerank_scores)
         self._top_scores.append(top_score)
 
         return RetrievalResult(
             evidence_cards=cards,
             intent=intent,
             avg_top_score=round(avg_top_score, 4),
+            avg_rerank_score=round(avg_rerank_score, 4),
             used_expansion=used_expansion,
         )

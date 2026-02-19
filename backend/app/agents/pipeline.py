@@ -24,6 +24,7 @@ class TutorState(TypedDict):
     intent: TopicIntent
     evidence_cards: List[EvidenceCard]
     retrieval_avg_top_score: float
+    retrieval_avg_rerank_score: float
     retrieval_used_expansion: bool
     opinion_comparison: List[OpinionComparisonItem]
     ikhtilaf_analysis: IkhtilafAnalysis
@@ -65,6 +66,7 @@ class NurPathAgentPipeline:
         result: RetrievalResult = self.retriever.retrieve(state["question"])
         state["evidence_cards"] = result.evidence_cards
         state["retrieval_avg_top_score"] = result.avg_top_score
+        state["retrieval_avg_rerank_score"] = result.avg_rerank_score
         state["retrieval_used_expansion"] = result.used_expansion
         return state
 
@@ -100,10 +102,15 @@ class NurPathAgentPipeline:
         if cards:
             avg_relevance = sum(card.relevance_score for card in cards) / len(cards)
         retrieval_signal = state["retrieval_avg_top_score"]
+        rerank_signal = state["retrieval_avg_rerank_score"]
         evidence_signal = min(1.0, len(cards) / 4)
         confidence = min(
             0.95,
-            0.32 + (0.28 * evidence_signal) + (0.25 * avg_relevance) + (0.15 * retrieval_signal),
+            0.28
+            + (0.24 * evidence_signal)
+            + (0.20 * avg_relevance)
+            + (0.14 * retrieval_signal)
+            + (0.14 * rerank_signal),
         )
         top_cards = cards[:2]
 
@@ -203,6 +210,7 @@ class NurPathAgentPipeline:
             "intent": TopicIntent.language_learning,
             "evidence_cards": [],
             "retrieval_avg_top_score": 0.0,
+            "retrieval_avg_rerank_score": 0.0,
             "retrieval_used_expansion": False,
             "opinion_comparison": [],
             "ikhtilaf_analysis": IkhtilafAnalysis(

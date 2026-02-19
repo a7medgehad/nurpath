@@ -32,6 +32,9 @@ def test_retrieval_health_reports_runtime_and_validation_counters() -> None:
         assert payload["embedding_provider"] in {"hash", "sentence_transformers"}
         assert isinstance(payload["embedding_model_name"], str)
         assert isinstance(payload["embedding_dimension"], int)
+        assert isinstance(payload["reranker_enabled"], bool)
+        assert isinstance(payload["reranker_provider"], str)
+        assert isinstance(payload["reranker_model_name"], str)
         assert isinstance(payload["qdrant_collection_vector_size"], int)
         assert isinstance(payload["reindex_required"], bool)
         assert isinstance(payload["retrieval_avg_top_score"], float)

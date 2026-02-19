@@ -34,3 +34,6 @@ def test_dimension_mismatch_recreates_collection() -> None:
     first = retriever.diagnostics()
     assert first["qdrant_collection_vector_size"] == retriever.embedder.dimension
     assert isinstance(first["reindex_required"], bool)
+    assert isinstance(first["reranker_enabled"], bool)
+    assert isinstance(first["reranker_provider"], str)
+    assert isinstance(first["reranker_model_name"], str)

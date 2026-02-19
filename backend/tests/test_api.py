@@ -84,6 +84,9 @@ def test_retrieval_health() -> None:
         assert body["embedding_provider"] in {"hash", "sentence_transformers"}
         assert isinstance(body["embedding_model_name"], str)
         assert isinstance(body["embedding_dimension"], int)
+        assert isinstance(body["reranker_enabled"], bool)
+        assert isinstance(body["reranker_provider"], str)
+        assert isinstance(body["reranker_model_name"], str)
         assert isinstance(body["qdrant_collection_vector_size"], int)
         assert isinstance(body["reindex_required"], bool)
         assert body["citations_valid"] is True

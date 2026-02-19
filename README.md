@@ -11,7 +11,7 @@ Most assistants flatten differences into a single answer. NurPath keeps disagree
 ## Key Features
 
 - Multi-agent tutoring flow (Intent -> Retrieve -> Compare -> Tutor -> Safety)
-- Hybrid retrieval (Qdrant vector search + lexical ranking fusion)
+- Hybrid retrieval (keyword + semantic + reranking)
 - Retrieval resilience (query expansion fallback + source-diversity selection)
 - E5-first embedding stack (`intfloat/multilingual-e5-large`) with optional Swan experiments
 - Structured ikhtilaf detector (consensus/disagreement status + conflict pair metadata)
@@ -162,6 +162,10 @@ Important retrieval-related keys:
 - `WEAK_RETRIEVAL_THRESHOLD`
 - `RETRIEVAL_VECTOR_WEIGHT`
 - `RETRIEVAL_LEXICAL_WEIGHT`
+- `RERANKER_ENABLED`
+- `RERANKER_PROVIDER`
+- `RERANKER_MODEL_NAME`
+- `RERANKER_WEIGHT`
 
 ### Runtime Profiles
 
@@ -202,7 +206,7 @@ make generate-mermaid
 ## Troubleshooting
 
 - **No answer appears / frequent abstains**:
-  - Check `GET /v1/health/retrieval` for `qdrant_connected`, `postgres_connected`, `embedding_model_name`, and `retrieval_avg_top_score`.
+  - Check `GET /v1/health/retrieval` for `qdrant_connected`, `postgres_connected`, `embedding_model_name`, `reranker_model_name`, and `retrieval_avg_top_score`.
   - Lower `GROUNDING_THRESHOLD` / `FAITHFULNESS_THRESHOLD` slightly only after reviewing eval output.
   - Confirm corpus passages include `passage_url` and valid `reference`.
 - **Changed embedding model but retrieval degraded**:

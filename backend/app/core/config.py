@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     weak_retrieval_threshold: float = 0.28
     retrieval_vector_weight: float = 0.55
     retrieval_lexical_weight: float = 0.45
+    reranker_enabled: bool = True
+    reranker_provider: str = "sentence_transformers"
+    reranker_model_name: str = "BAAI/bge-reranker-v2-m3"
+    reranker_weight: float = 0.25
 
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "nurpath_passages"
