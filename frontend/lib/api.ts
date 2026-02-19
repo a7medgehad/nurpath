@@ -12,13 +12,30 @@ export type EvidenceCard = {
 export type OpinionComparisonItem = {
   school_or_scholar: string;
   stance_summary: string;
+  stance_type: "invalidates" | "does_not_invalidate" | "unclear";
   evidence_passage_ids: string[];
+};
+
+export type ConflictPair = {
+  school_a: string;
+  school_b: string;
+  issue_topic: string;
+  evidence_passage_ids: string[];
+};
+
+export type IkhtilafAnalysis = {
+  status: "ikhtilaf" | "consensus" | "insufficient";
+  summary: string;
+  compared_schools: string[];
+  shared_topic_tags: string[];
+  conflict_pairs: ConflictPair[];
 };
 
 export type AskResponse = {
   direct_answer: string;
   evidence_cards: EvidenceCard[];
   opinion_comparison: OpinionComparisonItem[];
+  ikhtilaf_analysis?: IkhtilafAnalysis | null;
   confidence: number;
   safety_notice?: string | null;
   abstained: boolean;

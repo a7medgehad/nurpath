@@ -8,10 +8,12 @@ from app.core.config import settings
 from app.schemas import (
     AskResponse,
     EvidenceCard,
+    IkhtilafAnalysis,
     LearningObjective,
     OpinionComparisonItem,
     TopicIntent,
 )
+from app.services.ikhtilaf import analyze_ikhtilaf
 from app.services.learning import SessionManager
 from app.services.retrieval import HybridRetriever, RetrievalResult
 
@@ -23,6 +25,7 @@ class TutorState(TypedDict):
     intent: TopicIntent
     evidence_cards: List[EvidenceCard]
     opinion_comparison: List[OpinionComparisonItem]
+    ikhtilaf_analysis: IkhtilafAnalysis
     direct_answer: str
     confidence: float
     safety_notice: Optional[str]
@@ -64,29 +67,13 @@ class NurPathAgentPipeline:
 
     def _compare_node(self, state: TutorState) -> TutorState:
         cards = state["evidence_cards"]
-        comparisons: List[OpinionComparisonItem] = []
-
-        shafii = [c for c in cards if "shafii" in c.passage_id]
-        hanafi = [c for c in cards if "hanafi" in c.passage_id]
-
-        if shafii:
-            comparisons.append(
-                OpinionComparisonItem(
-                    school_or_scholar="Shafi'i",
-                    stance_summary="Direct skin contact is generally treated as nullifying wudu.",
-                    evidence_passage_ids=[c.passage_id for c in shafii],
-                )
-            )
-        if hanafi:
-            comparisons.append(
-                OpinionComparisonItem(
-                    school_or_scholar="Hanafi",
-                    stance_summary="Touching alone does not nullify wudu without another nullifier.",
-                    evidence_passage_ids=[c.passage_id for c in hanafi],
-                )
-            )
-
-        state["opinion_comparison"] = comparisons
+        detection = analyze_ikhtilaf(
+            evidence_cards=cards,
+            passages=self.retriever.catalog.passages,
+            preferred_language=state["preferred_language"],
+        )
+        state["opinion_comparison"] = detection.opinion_comparison
+        state["ikhtilaf_analysis"] = detection.analysis
         return state
 
     def _tutor_node(self, state: TutorState) -> TutorState:
@@ -101,11 +88,19 @@ class NurPathAgentPipeline:
                 "Here is a learning-focused answer grounded in cited evidence. "
                 "Review the evidence cards and compare differences before selecting practice."
             )
+            if state["ikhtilaf_analysis"].status == "ikhtilaf":
+                answer += " This topic contains valid scholarly disagreement (ikhtilaf)."
+            elif state["ikhtilaf_analysis"].status == "consensus":
+                answer += " Retrieved schools align on the core ruling."
         else:
             answer = (
                 "هذه إجابة تعليمية مبنية على الأدلة الموثقة. "
                 "راجع بطاقات الأدلة وقارن بين الأقوال قبل الترجيح أو العمل."
             )
+            if state["ikhtilaf_analysis"].status == "ikhtilaf":
+                answer += " تظهر هنا مساحة اختلاف معتبر بين الأقوال."
+            elif state["ikhtilaf_analysis"].status == "consensus":
+                answer += " المدارس المسترجعة متفقة على أصل الحكم."
 
         next_obj = None
         lesson_path = self.sessions.get_lesson_path(state["session_id"])
@@ -167,6 +162,13 @@ class NurPathAgentPipeline:
             "intent": TopicIntent.language_learning,
             "evidence_cards": [],
             "opinion_comparison": [],
+            "ikhtilaf_analysis": IkhtilafAnalysis(
+                status="insufficient",
+                summary="No analysis available.",
+                compared_schools=[],
+                shared_topic_tags=[],
+                conflict_pairs=[],
+            ),
             "direct_answer": "",
             "confidence": 0.0,
             "safety_notice": None,
@@ -180,6 +182,7 @@ class NurPathAgentPipeline:
             direct_answer=result["direct_answer"],
             evidence_cards=result["evidence_cards"],
             opinion_comparison=result["opinion_comparison"],
+            ikhtilaf_analysis=result["ikhtilaf_analysis"],
             confidence=result["confidence"],
             next_lesson=result["next_lesson"],
             safety_notice=result["safety_notice"],

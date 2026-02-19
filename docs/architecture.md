@@ -68,6 +68,7 @@ Outputs:
 - `direct_answer`
 - `evidence_cards[]`
 - `opinion_comparison[]`
+- `ikhtilaf_analysis` (status + conflict pair metadata)
 - `confidence`
 - `next_lesson`
 - `safety_notice`
@@ -87,6 +88,7 @@ Returns generated Mermaid diagram for the active LangGraph pipeline.
 ## Testing Strategy
 
 - Backend unit/integration tests (`pytest`) for sessions, ask flow, retrieval health, source filtering, quiz scoring, and diagram endpoint.
+- Ikhtilaf detector unit tests for conflict/consensus/insufficient branches.
 - Frontend static checks (`lint`, `typecheck`, `build`).
 - Browser E2E tests (Playwright) for:
   - ask flow + evidence rendering

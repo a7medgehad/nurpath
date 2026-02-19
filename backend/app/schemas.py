@@ -58,7 +58,23 @@ class EvidenceCard(BaseModel):
 class OpinionComparisonItem(BaseModel):
     school_or_scholar: str
     stance_summary: str
+    stance_type: str = "unclear"
     evidence_passage_ids: List[str] = Field(default_factory=list)
+
+
+class ConflictPair(BaseModel):
+    school_a: str
+    school_b: str
+    issue_topic: str
+    evidence_passage_ids: List[str] = Field(default_factory=list)
+
+
+class IkhtilafAnalysis(BaseModel):
+    status: str
+    summary: str
+    compared_schools: List[str] = Field(default_factory=list)
+    shared_topic_tags: List[str] = Field(default_factory=list)
+    conflict_pairs: List[ConflictPair] = Field(default_factory=list)
 
 
 class LearningObjective(BaseModel):
@@ -98,6 +114,7 @@ class AskResponse(BaseModel):
     direct_answer: str
     evidence_cards: List[EvidenceCard] = Field(default_factory=list)
     opinion_comparison: List[OpinionComparisonItem] = Field(default_factory=list)
+    ikhtilaf_analysis: Optional[IkhtilafAnalysis] = None
     confidence: float
     next_lesson: Optional[LearningObjective] = None
     safety_notice: Optional[str] = None

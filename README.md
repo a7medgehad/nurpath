@@ -13,6 +13,7 @@ Most assistants flatten differences into a single answer. NurPath keeps disagree
 - Multi-agent tutoring flow (Intent -> Retrieve -> Compare -> Tutor -> Safety)
 - Hybrid retrieval (Qdrant vector search + lexical ranking fusion)
 - Embedding provider abstraction (offline hash default, optional sentence-transformers)
+- Structured ikhtilaf detector (consensus/disagreement status + conflict pair metadata)
 - Citation-span validation guard
 - Session roadmap + quiz generation + mastery updates
 - Arabic/English UI with RTL/LTR support
@@ -37,6 +38,15 @@ Most assistants flatten differences into a single answer. NurPath keeps disagree
 - `GET /v1/sources/{id}`
 - `GET /v1/health/retrieval`
 - `GET /v1/architecture/langgraph-mermaid`
+
+`POST /v1/ask` includes:
+- `direct_answer`
+- `evidence_cards[]`
+- `opinion_comparison[]`
+- `ikhtilaf_analysis` (`ikhtilaf` | `consensus` | `insufficient`)
+- `confidence`
+- `safety_notice`
+- `abstained`
 
 ## Quick Start
 
