@@ -1,12 +1,29 @@
+export type ReferenceData = {
+  surah?: string | null;
+  ayah?: string | null;
+  collection?: string | null;
+  book?: string | null;
+  hadith_number?: string | null;
+  grading_authority?: string | null;
+  volume?: string | null;
+  page?: string | null;
+  madhhab?: string | null;
+  display_ar?: string | null;
+};
+
 export type EvidenceCard = {
   source_id: string;
   source_title: string;
+  source_title_ar: string;
   passage_id: string;
   arabic_quote: string;
   english_quote: string;
   citation_span: string;
   relevance_score: number;
   source_url: string;
+  source_type: "quran" | "hadith" | "fiqh";
+  authenticity_level: string;
+  reference?: ReferenceData | null;
 };
 
 export type OpinionComparisonItem = {
@@ -62,12 +79,17 @@ export type SessionCreateResponse = {
 export type SourceDocument = {
   id: string;
   title: string;
+  title_ar: string;
   author: string;
+  author_ar: string;
   era: string;
   language: string;
   license: string;
   url: string;
   citation_policy: string;
+  citation_policy_ar: string;
+  source_type: "quran" | "hadith" | "fiqh";
+  authenticity_level: string;
 };
 
 export type SourceListResponse = {
@@ -99,7 +121,11 @@ export async function createSession(preferred_language: "ar" | "en"): Promise<Se
   const r = await fetch(`${API_BASE}/v1/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ preferred_language, level: "beginner", goals: ["learn with evidence"] }),
+    body: JSON.stringify({
+      preferred_language,
+      level: "beginner",
+      goals: preferred_language === "ar" ? ["التعلم بالدليل"] : ["learn with evidence"],
+    }),
   });
 
   if (!r.ok) throw new Error("Failed to create session");
@@ -127,11 +153,17 @@ export async function getSources(filters?: {
   language?: string;
   topic?: string;
   q?: string;
+  ui_language?: "ar" | "en";
+  source_type?: "quran" | "hadith" | "fiqh";
+  authenticity_level?: string;
 }): Promise<SourceListResponse> {
   const params = new URLSearchParams();
   if (filters?.language) params.set("language", filters.language);
   if (filters?.topic) params.set("topic", filters.topic);
   if (filters?.q) params.set("q", filters.q);
+  if (filters?.ui_language) params.set("ui_language", filters.ui_language);
+  if (filters?.source_type) params.set("source_type", filters.source_type);
+  if (filters?.authenticity_level) params.set("authenticity_level", filters.authenticity_level);
 
   const query = params.toString();
   const r = await fetch(`${API_BASE}/v1/sources${query ? `?${query}` : ""}`);
@@ -143,6 +175,7 @@ export async function generateQuiz(payload: {
   session_id: string;
   objective_id: string;
   num_questions: number;
+  preferred_language: "ar" | "en";
 }): Promise<QuizGenerateResponse> {
   const r = await fetch(`${API_BASE}/v1/quiz/generate`, {
     method: "POST",

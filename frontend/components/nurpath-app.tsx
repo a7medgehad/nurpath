@@ -6,6 +6,7 @@ import {
   LearningObjective,
   QuizGenerateResponse,
   QuizGradeResponse,
+  SourceDocument,
   askQuestion,
   createSession,
   generateQuiz,
@@ -22,18 +23,9 @@ export function NurPathApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [sourceTopic, setSourceTopic] = useState("fiqh");
+  const [sourceTopic, setSourceTopic] = useState("فقه");
   const [sourceQuery, setSourceQuery] = useState("");
-  const [sources, setSources] = useState<
-    {
-      id: string;
-      title: string;
-      author: string;
-      language: string;
-      license: string;
-      url: string;
-    }[]
-  >([]);
+  const [sources, setSources] = useState<SourceDocument[]>([]);
   const [sourceLoading, setSourceLoading] = useState(false);
 
   const [quizLoading, setQuizLoading] = useState(false);
@@ -53,11 +45,17 @@ export function NurPathApp() {
 
   async function handleCreateSession() {
     setError(null);
-    const s = await createSession(language);
-    setSessionId(s.session_id);
-    setRoadmap(s.roadmap);
-    setQuiz(null);
-    setQuizGrade(null);
+    try {
+      const s = await createSession(language);
+      setSessionId(s.session_id);
+      setRoadmap(s.roadmap);
+      setQuiz(null);
+      setQuizGrade(null);
+    } catch (err) {
+      setError(
+        language === "ar" ? "تعذر إنشاء الجلسة." : err instanceof Error ? err.message : "Unexpected error",
+      );
+    }
   }
 
   async function handleAsk(e: FormEvent) {
@@ -74,7 +72,7 @@ export function NurPathApp() {
       });
       setResult(response);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unexpected error");
+      setError(language === "ar" ? "تعذر إتمام الطلب." : err instanceof Error ? err.message : "Unexpected error");
     } finally {
       setLoading(false);
     }
@@ -88,10 +86,11 @@ export function NurPathApp() {
         topic: sourceTopic || undefined,
         q: sourceQuery || undefined,
         language: language === "ar" ? "ar" : undefined,
+        ui_language: language,
       });
       setSources(payload.items);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unexpected error");
+      setError(language === "ar" ? "تعذر تحميل المصادر." : err instanceof Error ? err.message : "Unexpected error");
     } finally {
       setSourceLoading(false);
     }
@@ -112,18 +111,23 @@ export function NurPathApp() {
       }
       const objectiveId = currentRoadmap[0]?.id;
       if (!objectiveId) {
-        throw new Error("No learning objective available yet. Create a session first.");
+        throw new Error(
+          language === "ar"
+            ? "لا يوجد هدف تعليمي متاح حاليًا. ابدأ جلسة أولًا."
+            : "No learning objective available yet. Create a session first.",
+        );
       }
       const q = await generateQuiz({
         session_id: sid,
         objective_id: objectiveId,
         num_questions: 3,
+        preferred_language: language,
       });
       setQuiz(q);
       setQuizAnswers({});
       setQuizGrade(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unexpected error");
+      setError(language === "ar" ? "تعذر إنشاء الاختبار." : err instanceof Error ? err.message : "Unexpected error");
     } finally {
       setQuizLoading(false);
     }
@@ -142,7 +146,7 @@ export function NurPathApp() {
       });
       setQuizGrade(grade);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unexpected error");
+      setError(language === "ar" ? "تعذر تصحيح الاختبار." : err instanceof Error ? err.message : "Unexpected error");
     } finally {
       setQuizLoading(false);
     }
@@ -151,6 +155,10 @@ export function NurPathApp() {
   useEffect(() => {
     void handleLoadSources();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
+
+  useEffect(() => {
+    setSourceTopic(language === "ar" ? "فقه" : "fiqh");
   }, [language]);
 
   function ikhtilafStatusLabel(status: "ikhtilaf" | "consensus" | "insufficient"): string {
@@ -181,12 +189,36 @@ export function NurPathApp() {
     return "Unclear";
   }
 
+  function sourceTypeLabel(sourceType: "quran" | "hadith" | "fiqh"): string {
+    if (language === "ar") {
+      if (sourceType === "quran") return "القرآن";
+      if (sourceType === "hadith") return "السنة";
+      return "الفقه";
+    }
+    if (sourceType === "quran") return "Quran";
+    if (sourceType === "hadith") return "Sunnah";
+    return "Fiqh";
+  }
+
+  function authenticityLabel(level: string): string {
+    if (language === "ar") {
+      if (level === "qat_i") return "قطعي الثبوت";
+      if (level === "sahih") return "صحيح";
+      if (level === "hasan") return "حسن";
+      if (level === "mu_tabar") return "معتبر";
+      return "موثّق";
+    }
+    return level;
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 md:px-8" dir={dir}>
       <section className="card-enter rounded-3xl border border-white/70 bg-white/80 p-6 shadow-soft backdrop-blur md:p-10">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-oasis">NurPath</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-oasis">
+              {language === "ar" ? "نور المسار" : "NurPath"}
+            </p>
             <h1 className="mt-2 text-3xl font-bold text-ink md:text-5xl">
               {language === "ar"
                 ? "مُعلّم ذكي للمعرفة الإسلامية المبنية على الدليل"
@@ -207,7 +239,7 @@ export function NurPathApp() {
               onClick={() => setLanguage("ar")}
               type="button"
             >
-              عربي
+              {language === "ar" ? "العربية" : "Arabic"}
             </button>
             <button
               className={`rounded-full px-4 py-2 text-sm font-semibold ${
@@ -216,7 +248,7 @@ export function NurPathApp() {
               onClick={() => setLanguage("en")}
               type="button"
             >
-              English
+              {language === "ar" ? "الإنجليزية" : "English"}
             </button>
           </div>
         </div>
@@ -248,9 +280,9 @@ export function NurPathApp() {
             </button>
           </div>
 
-          {sessionId && (
+          {sessionId && language === "en" && (
             <p className="text-xs text-ink/70">
-              {language === "ar" ? "معرّف الجلسة:" : "Session ID:"} <span className="font-mono">{sessionId}</span>
+              Session ID: <span className="font-mono">{sessionId}</span>
             </p>
           )}
 
@@ -266,7 +298,7 @@ export function NurPathApp() {
               className="rounded-xl border border-ink/15 bg-white px-3 py-2 text-sm"
               value={sourceTopic}
               onChange={(e) => setSourceTopic(e.target.value)}
-              placeholder={language === "ar" ? "موضوع (مثل: fiqh)" : "Topic (e.g. fiqh)"}
+              placeholder={language === "ar" ? "موضوع (مثل: فقه)" : "Topic (e.g. fiqh)"}
             />
             <input
               className="rounded-xl border border-ink/15 bg-white px-3 py-2 text-sm"
@@ -282,8 +314,14 @@ export function NurPathApp() {
           <div className="mt-4 max-h-80 space-y-2 overflow-auto">
             {sources.map((s) => (
               <a key={s.id} href={s.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-ink/10 p-3 hover:bg-sand/40">
-                <p className="text-sm font-semibold text-ink">{s.title}</p>
-                <p className="text-xs text-ink/70">{s.author} • {s.language} • {s.license}</p>
+                <p className="text-sm font-semibold text-ink">{language === "ar" ? s.title_ar : s.title}</p>
+                {language === "ar" ? (
+                  <p className="text-xs text-ink/70">
+                    {s.author_ar} • {sourceTypeLabel(s.source_type)} • {authenticityLabel(s.authenticity_level)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-ink/70">{s.author} • {s.language} • {s.license}</p>
+                )}
               </a>
             ))}
             {sources.length === 0 && <p className="text-sm text-ink/70">{language === "ar" ? "لا توجد نتائج." : "No sources found."}</p>}
@@ -385,7 +423,8 @@ export function NurPathApp() {
                   </p>
                   {result.ikhtilaf_analysis.conflict_pairs.map((pair) => (
                     <p key={`${pair.school_a}-${pair.school_b}-${pair.issue_topic}`} className="mt-1">
-                      {pair.school_a} ↔ {pair.school_b} ({pair.issue_topic})
+                      {pair.school_a} ↔ {pair.school_b} (
+                      {language === "ar" && /[A-Za-z]/.test(pair.issue_topic) ? "المسألة" : pair.issue_topic})
                     </p>
                   ))}
                 </div>
@@ -398,9 +437,19 @@ export function NurPathApp() {
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               {result.evidence_cards.map((card) => (
                 <div key={card.passage_id} className="rounded-2xl border border-ink/10 bg-white p-4">
-                  <p className="text-sm font-semibold text-ink">{card.source_title}</p>
+                  <p className="text-sm font-semibold text-ink">
+                    {language === "ar" ? card.source_title_ar : card.source_title}
+                  </p>
+                  {language === "ar" ? (
+                    <p className="mt-1 text-xs text-ink/70">
+                      {sourceTypeLabel(card.source_type)} • {authenticityLabel(card.authenticity_level)}
+                    </p>
+                  ) : null}
                   <p className="mt-2 text-sm text-ink/80">{card.arabic_quote}</p>
-                  <p className="mt-2 text-sm text-ink/80">{card.english_quote}</p>
+                  {language === "en" ? <p className="mt-2 text-sm text-ink/80">{card.english_quote}</p> : null}
+                  {card.reference?.display_ar && language === "ar" ? (
+                    <p className="mt-2 text-xs text-ink/70">{card.reference.display_ar}</p>
+                  ) : null}
                   <a
                     href={card.source_url}
                     target="_blank"

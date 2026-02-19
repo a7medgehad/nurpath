@@ -56,8 +56,9 @@ graph TD;
 3. Query Qdrant for vector candidates.
 4. Compute lexical overlap scores over catalog passages.
 5. Fuse vector and lexical scores into final ranking.
-6. Return top evidence cards with strict source references.
-7. Run citation validation before response finalization.
+6. Apply source-priority tie-breaking (Quran > Hadith > Fiqh for close scores).
+7. Return top evidence cards with strict source references.
+8. Run citation validation before response finalization.
 
 ## API Contracts
 
@@ -77,6 +78,10 @@ Outputs:
 ### `GET /v1/architecture/langgraph-mermaid`
 
 Returns generated Mermaid diagram for the active LangGraph pipeline.
+
+### `GET /v1/sources`
+
+Supports `source_type`, `authenticity_level`, and `ui_language` filters for localized source browsing and authenticity-aware catalog views.
 
 ## Safety and Trust Guarantees
 

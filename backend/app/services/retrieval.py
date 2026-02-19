@@ -12,6 +12,20 @@ from app.schemas import EvidenceCard, Passage, TopicIntent
 from app.services.catalog import load_catalog
 from app.services.embeddings import Embedder, get_embedder
 
+SOURCE_TYPE_PRIORITY = {
+    "quran": 0.08,
+    "hadith": 0.04,
+    "fiqh": 0.0,
+}
+
+INTENT_TAGS = {
+    TopicIntent.fiqh: {"fiqh", "فقه", "wudu", "وضوء", "tahara", "طهارة"},
+    TopicIntent.aqidah: {"aqidah", "عقيدة", "iman", "إيمان", "ihsan", "إحسان", "islam", "إسلام"},
+    TopicIntent.akhlaq: {"akhlaq", "أخلاق", "adab", "آداب", "humanity", "إنسانية"},
+    TopicIntent.history: {"history", "تاريخ", "sira", "سيرة"},
+    TopicIntent.language_learning: {"language_learning", "تعلم", "لغة"},
+}
+
 
 @dataclass
 class RetrievalResult:
@@ -82,6 +96,10 @@ class HybridRetriever:
                     "arabic_text": passage.arabic_text,
                     "english_text": passage.english_text,
                     "topic_tags": passage.topic_tags,
+                    "source_type": self.catalog.sources[passage.source_document_id].source_type,
+                    "authenticity_level": self.catalog.sources[
+                        passage.source_document_id
+                    ].authenticity_level,
                 },
             )
             for idx, passage in enumerate(passages)
@@ -138,7 +156,13 @@ class HybridRetriever:
         for passage_id in candidate_ids:
             lexical = lexical_scores.get(passage_id, 0.0)
             vector = vector_scores.get(passage_id, 0.0)
-            combined = (0.35 * lexical) + (0.65 * vector)
+            passage = self.catalog.passages[passage_id]
+            source = self.catalog.sources[passage.source_document_id]
+            priority_bonus = SOURCE_TYPE_PRIORITY.get(source.source_type, 0.0)
+            passage_tags = {tag.lower() for tag in passage.topic_tags}
+            intent_tags = INTENT_TAGS.get(intent, set())
+            intent_bonus = 0.06 if passage_tags.intersection(intent_tags) else -0.03
+            combined = (0.35 * lexical) + (0.65 * vector) + priority_bonus + intent_bonus
             if combined <= 0:
                 continue
             ranked.append((passage_id, combined))
@@ -153,12 +177,16 @@ class HybridRetriever:
                 EvidenceCard(
                     source_id=source.id,
                     source_title=source.title,
+                    source_title_ar=source.title_ar,
                     passage_id=passage.id,
                     arabic_quote=passage.arabic_text,
                     english_quote=passage.english_text,
                     citation_span=passage.id,
                     relevance_score=round(score, 4),
                     source_url=source.url,
+                    source_type=source.source_type,
+                    authenticity_level=source.authenticity_level,
+                    reference=passage.reference,
                 )
             )
 

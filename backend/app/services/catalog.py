@@ -11,13 +11,23 @@ from sqlmodel import select
 from app.core.config import settings
 from app.core.db import get_db_session
 from app.models import PassageModel, SourceDocumentModel
-from app.schemas import Passage, SourceDocument
+from app.schemas import Passage, ReferenceData, SourceDocument
+from app.services.ingestion import load_allowlist, validate_source_record
 
 
 @dataclass
 class CatalogStore:
     sources: Dict[str, SourceDocument]
     passages: Dict[str, Passage]
+
+
+TOPIC_ALIASES = {
+    "fiqh": {"fiqh", "فقه"},
+    "aqidah": {"aqidah", "عقيدة"},
+    "akhlaq": {"akhlaq", "أخلاق"},
+    "history": {"history", "تاريخ", "سيرة"},
+    "language_learning": {"language_learning", "تعلم اللغة"},
+}
 
 
 def _resolve_catalog_path() -> Path:
@@ -33,23 +43,46 @@ def _resolve_catalog_path() -> Path:
     raise FileNotFoundError("Could not resolve sources catalog path.")
 
 
+def _resolve_allowlist_path() -> Path:
+    candidate = Path(__file__).resolve().parents[3] / "data" / "allowlist.csv"
+    if candidate.exists():
+        return candidate
+    raise FileNotFoundError("Could not resolve allowlist path.")
+
+
 @lru_cache(maxsize=1)
 def load_catalog() -> CatalogStore:
     data = json.loads(_resolve_catalog_path().read_text(encoding="utf-8"))
+    allowlist = load_allowlist(_resolve_allowlist_path())
 
     sources: Dict[str, SourceDocument] = {}
     passages: Dict[str, Passage] = {}
 
     for row in data:
+        source_id = row.get("id", "")
+        allowlist_row = allowlist.get(source_id)
+        if allowlist_row is None or allowlist_row.status.lower() != "approved":
+            continue
+
+        validation_errors = validate_source_record(row)
+        if validation_errors:
+            joined = "; ".join(validation_errors)
+            raise ValueError(f"Catalog validation failed for source '{source_id}': {joined}")
+
         source = SourceDocument(
-            id=row["id"],
+            id=source_id,
             title=row["title"],
+            title_ar=row["title_ar"],
             author=row["author"],
+            author_ar=row["author_ar"],
             era=row["era"],
             language=row["language"],
             license=row["license"],
             url=row["url"],
             citation_policy=row["citation_policy"],
+            citation_policy_ar=row["citation_policy_ar"],
+            source_type=row["source_type"],
+            authenticity_level=row["authenticity_level"],
         )
         sources[source.id] = source
 
@@ -60,6 +93,7 @@ def load_catalog() -> CatalogStore:
                 arabic_text=p["arabic_text"],
                 english_text=p["english_text"],
                 topic_tags=p.get("topic_tags", []),
+                reference=ReferenceData(**p["reference"]) if p.get("reference") else None,
             )
             passages[passage.id] = passage
 
@@ -74,6 +108,8 @@ def filter_sources(
     language: Optional[str] = None,
     topic: Optional[str] = None,
     q: Optional[str] = None,
+    source_type: Optional[str] = None,
+    authenticity_level: Optional[str] = None,
 ) -> List[SourceDocument]:
     catalog = load_catalog()
     candidates = list(catalog.sources.values())
@@ -83,10 +119,16 @@ def filter_sources(
 
     if topic:
         topic_l = topic.lower()
+        accepted = set([topic_l])
+        for canonical, aliases in TOPIC_ALIASES.items():
+            if topic_l in aliases:
+                accepted = set(aliases).union({canonical})
+                break
+
         source_ids = {
             p.source_document_id
             for p in catalog.passages.values()
-            if any(topic_l in tag.lower() for tag in p.topic_tags)
+            if any(tag.lower() in accepted for tag in p.topic_tags)
         }
         candidates = [s for s in candidates if s.id in source_ids]
 
@@ -95,8 +137,20 @@ def filter_sources(
         candidates = [
             s
             for s in candidates
-            if q_l in s.title.lower() or q_l in s.author.lower() or q_l in s.id.lower()
+            if q_l in s.title.lower()
+            or q_l in s.title_ar.lower()
+            or q_l in s.author.lower()
+            or q_l in s.author_ar.lower()
+            or q_l in s.id.lower()
         ]
+
+    if source_type:
+        source_type_l = source_type.lower()
+        candidates = [s for s in candidates if s.source_type.lower() == source_type_l]
+
+    if authenticity_level:
+        auth_l = authenticity_level.lower()
+        candidates = [s for s in candidates if s.authenticity_level.lower() == auth_l]
 
     return candidates
 

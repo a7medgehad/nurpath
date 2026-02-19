@@ -6,12 +6,16 @@ def _card(passage_id: str) -> EvidenceCard:
     return EvidenceCard(
         source_id="src",
         source_title="src title",
+        source_title_ar="عنوان المصدر",
         passage_id=passage_id,
         arabic_quote="",
         english_quote="",
         citation_span=passage_id,
         relevance_score=0.9,
         source_url="https://example.org",
+        source_type="fiqh",
+        authenticity_level="mu_tabar",
+        reference=None,
     )
 
 

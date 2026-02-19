@@ -23,12 +23,30 @@ class TopicIntent(str, Enum):
 class SourceDocument(BaseModel):
     id: str
     title: str
+    title_ar: str
     author: str
+    author_ar: str
     era: str
     language: str
     license: str
     url: str
     citation_policy: str
+    citation_policy_ar: str
+    source_type: str
+    authenticity_level: str
+
+
+class ReferenceData(BaseModel):
+    surah: Optional[str] = None
+    ayah: Optional[str] = None
+    collection: Optional[str] = None
+    book: Optional[str] = None
+    hadith_number: Optional[str] = None
+    grading_authority: Optional[str] = None
+    volume: Optional[str] = None
+    page: Optional[str] = None
+    madhhab: Optional[str] = None
+    display_ar: Optional[str] = None
 
 
 class SourceListResponse(BaseModel):
@@ -42,17 +60,22 @@ class Passage(BaseModel):
     arabic_text: str
     english_text: str
     topic_tags: List[str] = Field(default_factory=list)
+    reference: Optional[ReferenceData] = None
 
 
 class EvidenceCard(BaseModel):
     source_id: str
     source_title: str
+    source_title_ar: str
     passage_id: str
     arabic_quote: str
     english_quote: str
     citation_span: str
     relevance_score: float
     source_url: str
+    source_type: str
+    authenticity_level: str
+    reference: Optional[ReferenceData] = None
 
 
 class OpinionComparisonItem(BaseModel):
@@ -125,6 +148,7 @@ class QuizGenerateRequest(BaseModel):
     session_id: str
     objective_id: str
     num_questions: int = Field(default=3, ge=1, le=10)
+    preferred_language: str = Field(default="ar", pattern=r"^(ar|en)$")
 
 
 class QuizQuestion(BaseModel):

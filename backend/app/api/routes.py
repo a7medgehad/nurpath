@@ -65,17 +65,25 @@ def ask_question(
     citations_ok = validator.validate_response(response)
     if not citations_ok:
         response.abstained = True
-        response.safety_notice = "Citation integrity failed. Response downgraded to abstention."
-        response.direct_answer = (
-            "Unable to provide a reliable answer right now due to citation integrity constraints."
-        )
+        if req.preferred_language == "ar":
+            response.safety_notice = "تعذر توثيق الاستشهادات بشكل كافٍ؛ تم تحويل الإجابة إلى وضع التحفظ."
+            response.direct_answer = "تعذر تقديم إجابة موثوقة الآن بسبب قيود سلامة الاستشهاد."
+        else:
+            response.safety_notice = "Citation integrity failed. Response downgraded to abstention."
+            response.direct_answer = (
+                "Unable to provide a reliable answer right now due to citation integrity constraints."
+            )
 
     return response
 
 
 @router.post("/quiz/generate", response_model=QuizGenerateResponse)
 def generate_quiz(req: QuizGenerateRequest, quiz: QuizService = Depends(get_quiz_service)):
-    return quiz.generate(objective_id=req.objective_id, num_questions=req.num_questions)
+    return quiz.generate(
+        objective_id=req.objective_id,
+        num_questions=req.num_questions,
+        preferred_language=req.preferred_language,
+    )
 
 
 @router.post("/quiz/grade", response_model=QuizGradeResponse)
@@ -104,9 +112,30 @@ def list_sources(
     language: str | None = None,
     topic: str | None = None,
     q: str | None = None,
+    source_type: str | None = None,
+    authenticity_level: str | None = None,
+    ui_language: str = "en",
 ):
-    items = filter_sources(language=language, topic=topic, q=q)
-    return SourceListResponse(items=items, total=len(items))
+    items = filter_sources(
+        language=language,
+        topic=topic,
+        q=q,
+        source_type=source_type,
+        authenticity_level=authenticity_level,
+    )
+    response_items = items
+    if ui_language == "ar":
+        response_items = [
+            item.model_copy(
+                update={
+                    "title": item.title_ar,
+                    "author": item.author_ar,
+                    "citation_policy": item.citation_policy_ar,
+                }
+            )
+            for item in items
+        ]
+    return SourceListResponse(items=response_items, total=len(response_items))
 
 
 @router.get("/health/retrieval", response_model=RetrievalHealthResponse)
@@ -132,6 +161,20 @@ def retrieval_health(
         notes=[
             "Hybrid retriever active (vector + lexical)",
             f"Embedding provider={retriever.embedder.__class__.__name__}",
+            f"Sources count={len(retriever.catalog.sources)}",
+            "Source types indexed="
+            + ", ".join(
+                sorted({source.source_type for source in retriever.catalog.sources.values()})
+            ),
+            "Authenticity levels indexed="
+            + ", ".join(
+                sorted(
+                    {
+                        source.authenticity_level
+                        for source in retriever.catalog.sources.values()
+                    }
+                )
+            ),
             "Citation validator active",
         ],
     )
