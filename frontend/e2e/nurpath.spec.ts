@@ -8,6 +8,7 @@ test.describe("NurPath end-to-end", () => {
 
     await expect(page.getByRole("heading", { name: "الإجابة" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "بطاقات الدليل" })).toBeVisible();
+    await expect(page.getByText("حالة التحقق")).toBeVisible();
     await expect(
       page.locator("span", { hasText: /اختلاف معتبر|اتفاق|بيانات غير كافية/ }),
     ).toBeVisible();
@@ -60,5 +61,20 @@ test.describe("NurPath end-to-end", () => {
     await page.getByRole("button", { name: "Ask" }).click();
 
     await expect(page.getByText("Insufficient Data")).toBeVisible();
+  });
+
+  test("Evidence links target passage-level references", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "الإنجليزية" }).click();
+
+    const mainQuestion = page.locator("textarea").first();
+    await mainQuestion.fill("What are wudu evidences from Quran and Sunnah?");
+    await page.getByRole("button", { name: "Ask" }).click();
+
+    const firstEvidenceLink = page.getByRole("link", { name: "Open passage" }).first();
+    await expect(firstEvidenceLink).toBeVisible();
+    const href = await firstEvidenceLink.getAttribute("href");
+    expect(href).toBeTruthy();
+    expect(href).not.toBe("https://shamela.ws/book/1655");
   });
 });

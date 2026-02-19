@@ -18,6 +18,7 @@
         "id": "p_quran_5_6",
         "arabic_text": "يَا أَيُّهَا الَّذِينَ آمَنُوا إِذَا قُمْتُمْ إِلَى الصَّلَاةِ فَاغْسِلُوا وُجُوهَكُمْ...",
         "english_text": "O you who believe, when you rise for prayer, wash your faces...",
+        "passage_url": "https://quran.com/5/6",
         "topic_tags": ["fiqh", "فقه", "wudu", "وضوء", "tahara", "طهارة"],
         "reference": {
           "surah": "5",
@@ -46,6 +47,7 @@
         "id": "p_quran_2_183",
         "arabic_text": "يَا أَيُّهَا الَّذِينَ آمَنُوا كُتِبَ عَلَيْكُمُ الصِّيَامُ كَمَا كُتِبَ عَلَى الَّذِينَ مِن قَبْلِكُمْ لَعَلَّكُمْ تَتَّقُونَ",
         "english_text": "Fasting has been prescribed for you as it was prescribed for those before you so that you may attain taqwa.",
+        "passage_url": "https://quran.com/2/183",
         "topic_tags": ["fiqh", "فقه", "sawm", "صيام", "akhlaq", "أخلاق"],
         "reference": {
           "surah": "2",
@@ -74,6 +76,7 @@
         "id": "p_quran_49_13",
         "arabic_text": "يَا أَيُّهَا النَّاسُ إِنَّا خَلَقْنَاكُمْ مِنْ ذَكَرٍ وَأُنثَىٰ وَجَعَلْنَاكُمْ شُعُوبًا وَقَبَائِلَ لِتَعَارَفُوا",
         "english_text": "O humankind, We created you from a male and female and made you peoples and tribes so that you may know one another.",
+        "passage_url": "https://quran.com/49/13",
         "topic_tags": ["akhlaq", "أخلاق", "adab", "آداب", "humanity", "إنسانية"],
         "reference": {
           "surah": "49",
@@ -102,6 +105,7 @@
         "id": "p_quran_4_43",
         "arabic_text": "وَإِن كُنتُم مَّرْضَىٰ أَوْ عَلَىٰ سَفَرٍ ... فَلَمْ تَجِدُوا مَاءً فَتَيَمَّمُوا صَعِيدًا طَيِّبًا",
         "english_text": "If you are ill or on a journey and do not find water, then perform tayammum with clean earth.",
+        "passage_url": "https://quran.com/4/43",
         "topic_tags": ["fiqh", "فقه", "tahara", "طهارة", "tayammum", "تيمم"],
         "reference": {
           "surah": "4",
@@ -130,6 +134,7 @@
         "id": "p_bukhari_1",
         "arabic_text": "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ",
         "english_text": "Actions are only by intentions.",
+        "passage_url": "https://sunnah.com/bukhari:1",
         "topic_tags": ["hadith", "حديث", "akhlaq", "أخلاق", "niyyah", "نية"],
         "reference": {
           "collection": "Sahih al-Bukhari",
@@ -160,6 +165,7 @@
         "id": "p_bukhari_135",
         "arabic_text": "لَا تُقْبَلُ صَلَاةُ أَحَدِكُمْ إِذَا أَحْدَثَ حَتَّى يَتَوَضَّأَ",
         "english_text": "The prayer of one who breaks purity is not accepted until he performs wudu.",
+        "passage_url": "https://sunnah.com/bukhari:135",
         "topic_tags": ["hadith", "حديث", "fiqh", "فقه", "wudu", "وضوء"],
         "reference": {
           "collection": "Sahih al-Bukhari",
@@ -190,6 +196,7 @@
         "id": "p_muslim_8",
         "arabic_text": "بُنِيَ الْإِسْلَامُ عَلَى خَمْسٍ",
         "english_text": "Islam is built upon five pillars.",
+        "passage_url": "https://sunnah.com/muslim:8",
         "topic_tags": ["hadith", "حديث", "aqidah", "عقيدة", "islam", "إسلام"],
         "reference": {
           "collection": "Sahih Muslim",
@@ -220,6 +227,7 @@
         "id": "p_nawawi_12",
         "arabic_text": "مِنْ حُسْنِ إِسْلَامِ الْمَرْءِ تَرْكُهُ مَا لَا يَعْنِيهِ",
         "english_text": "Part of a person's good Islam is to leave what does not concern him.",
+        "passage_url": "https://sunnah.com/nawawi40:12",
         "topic_tags": ["hadith", "حديث", "akhlaq", "أخلاق", "adab", "آداب"],
         "reference": {
           "collection": "Nawawi 40",
@@ -250,6 +258,7 @@
         "id": "p_umm_shafii_touch",
         "arabic_text": "ومسُّ المرأةِ عندنا ناقضٌ للوضوء إذا كان المسُّ مباشرةً من غير حائل.",
         "english_text": "In the Shafi'i school, direct skin contact with a woman is treated as invalidating wudu.",
+        "passage_url": "https://shamela.ws/book/1655/24",
         "topic_tags": ["fiqh", "فقه", "wudu", "وضوء", "ikhtilaf", "اختلاف", "shafii"],
         "reference": {
           "book": "Al-Umm",
@@ -280,6 +289,7 @@
         "id": "p_hidaya_hanafi_touch",
         "arabic_text": "ولا ينتقض الوضوء بمس المرأة من غير خروج ناقضٍ آخر.",
         "english_text": "In the Hanafi school, touching a woman by itself does not invalidate wudu without another nullifier.",
+        "passage_url": "https://shamela.ws/book/11820/17",
         "topic_tags": ["fiqh", "فقه", "wudu", "وضوء", "ikhtilaf", "اختلاف", "hanafi"],
         "reference": {
           "book": "Al-Hidaya",
@@ -310,6 +320,7 @@
         "id": "p_bidaya_compare_touch",
         "arabic_text": "واختلفوا في مسِّ المرأة: فذهب قومٌ إلى النقض، وذهب آخرون إلى عدم النقض.",
         "english_text": "Scholars differed on touching women: some held that it invalidates wudu, while others held that it does not.",
+        "passage_url": "https://shamela.ws/book/12171/33",
         "topic_tags": ["fiqh", "فقه", "wudu", "وضوء", "ikhtilaf", "اختلاف", "usul", "أصول"],
         "reference": {
           "book": "Bidayat al-Mujtahid",
@@ -340,6 +351,7 @@
         "id": "p_mughni_hanbali_touch",
         "arabic_text": "والمسُّ عند الحنابلة لا ينقض الوضوءَ إلا مع وجود سببٍ ناقضٍ بيّن.",
         "english_text": "In the Hanbali school, touching does not invalidate wudu unless accompanied by a clear nullifying cause.",
+        "passage_url": "https://shamela.ws/book/8463/258",
         "topic_tags": ["fiqh", "فقه", "wudu", "وضوء", "ikhtilaf", "اختلاف", "hanbali"],
         "reference": {
           "book": "Al-Mughni",

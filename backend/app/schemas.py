@@ -59,6 +59,7 @@ class Passage(BaseModel):
     source_document_id: str
     arabic_text: str
     english_text: str
+    passage_url: str
     topic_tags: List[str] = Field(default_factory=list)
     reference: Optional[ReferenceData] = None
 
@@ -73,6 +74,7 @@ class EvidenceCard(BaseModel):
     citation_span: str
     relevance_score: float
     source_url: str
+    passage_url: str
     source_type: str
     authenticity_level: str
     reference: Optional[ReferenceData] = None
@@ -127,6 +129,25 @@ class SessionCreateResponse(BaseModel):
     lesson_path: LessonPath
 
 
+class CitationIntegrityResult(BaseModel):
+    passed: bool = False
+    coverage: float = 0.0
+
+
+class ScoreGateResult(BaseModel):
+    score: float = 0.0
+    threshold: float = 0.0
+    passed: bool = False
+
+
+class ValidationResult(BaseModel):
+    passed: bool = False
+    citation_integrity: CitationIntegrityResult = Field(default_factory=CitationIntegrityResult)
+    grounding: ScoreGateResult = Field(default_factory=ScoreGateResult)
+    faithfulness: ScoreGateResult = Field(default_factory=ScoreGateResult)
+    decision_reason: str = "not_evaluated"
+
+
 class AskRequest(BaseModel):
     session_id: str
     question: str = Field(min_length=4)
@@ -142,6 +163,7 @@ class AskResponse(BaseModel):
     next_lesson: Optional[LearningObjective] = None
     safety_notice: Optional[str] = None
     abstained: bool = False
+    validation: ValidationResult = Field(default_factory=ValidationResult)
 
 
 class QuizGenerateRequest(BaseModel):
@@ -177,8 +199,14 @@ class QuizGradeResponse(BaseModel):
 
 class RetrievalHealthResponse(BaseModel):
     ok: bool
+    profile: str
+    qdrant_connected: bool
+    postgres_connected: bool
     citations_valid: bool
     indexed_passages: int
+    retrieval_avg_top_score: float
+    validation_pass_count: int
+    validation_abstain_count: int
     notes: List[str] = Field(default_factory=list)
 
 

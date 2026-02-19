@@ -211,6 +211,18 @@ export function NurPathApp() {
     return level;
   }
 
+  function validationReasonLabel(reason: string): string {
+    if (language === "ar") {
+      if (reason === "passed") return "تم اجتياز التحقق";
+      if (reason === "citation_integrity_failed") return "فشل في سلامة الاستشهاد";
+      if (reason === "grounding_below_threshold") return "الاستناد أقل من العتبة";
+      if (reason === "faithfulness_below_threshold") return "التوافق مع الدليل أقل من العتبة";
+      if (reason === "abstained_by_safety_policy") return "تم التحفظ بسبب سياسة السلامة";
+      return "نتيجة تحقق غير معروفة";
+    }
+    return reason.replaceAll("_", " ");
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 md:px-8" dir={dir}>
       <section className="card-enter rounded-3xl border border-white/70 bg-white/80 p-6 shadow-soft backdrop-blur md:p-10">
@@ -378,6 +390,26 @@ export function NurPathApp() {
             <p className="mt-4 text-xs uppercase tracking-wide text-warm">
               {language === "ar" ? "درجة الثقة" : "Confidence"}: {(result.confidence * 100).toFixed(0)}%
             </p>
+            <div className="mt-3 rounded-xl border border-ink/10 bg-sand/40 px-3 py-2 text-xs text-ink/90">
+              <p>
+                {language === "ar" ? "حالة التحقق" : "Validation"}:{" "}
+                {result.validation.passed
+                  ? language === "ar"
+                    ? "مقبول"
+                    : "Passed"
+                  : language === "ar"
+                    ? "مرفوض"
+                    : "Failed"}
+              </p>
+              <p>
+                {language === "ar" ? "السبب" : "Reason"}:{" "}
+                {validationReasonLabel(result.validation.decision_reason)}
+              </p>
+              <p>
+                {language === "ar" ? "تغطية الاستشهاد" : "Citation Coverage"}:{" "}
+                {(result.validation.citation_integrity.coverage * 100).toFixed(0)}%
+              </p>
+            </div>
             {result.safety_notice && (
               <p className="mt-3 rounded-xl bg-amber-100 px-3 py-2 text-sm text-amber-900">{result.safety_notice}</p>
             )}
@@ -451,12 +483,12 @@ export function NurPathApp() {
                     <p className="mt-2 text-xs text-ink/70">{card.reference.display_ar}</p>
                   ) : null}
                   <a
-                    href={card.source_url}
+                    href={card.passage_url}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-3 inline-block text-xs font-semibold text-oasis underline"
                   >
-                    {language === "ar" ? "المصدر" : "Source"}
+                    {language === "ar" ? "المرجع التفصيلي" : "Open passage"}
                   </a>
                 </div>
               ))}

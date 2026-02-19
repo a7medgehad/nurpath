@@ -35,6 +35,7 @@ def test_validate_source_record_rejects_missing_arabic_fields() -> None:
                 "id": "p_x",
                 "arabic_text": "نص عربي",
                 "english_text": "english text",
+                "passage_url": "https://example.org/passage/1",
                 "topic_tags": ["fiqh"],
                 "reference": {"surah": "1", "ayah": "1", "display_ar": "سورة الفاتحة، الآية ١"},
             }
@@ -65,6 +66,7 @@ def test_validate_source_record_accepts_complete_fiqh_source() -> None:
                 "id": "p_ok",
                 "arabic_text": "نص عربي فقهي",
                 "english_text": "A fiqh excerpt",
+                "passage_url": "https://example.org/fiqh/1/17",
                 "topic_tags": ["fiqh", "wudu", "hanafi"],
                 "reference": {
                     "book": "Al-Hidaya",
@@ -78,3 +80,38 @@ def test_validate_source_record_accepts_complete_fiqh_source() -> None:
     }
     errors = validate_source_record(source)
     assert errors == []
+
+
+def test_validate_source_record_rejects_missing_passage_url_for_indexable_source() -> None:
+    source = {
+        "id": "src_no_passage_url",
+        "title": "Sample",
+        "title_ar": "عينة",
+        "author": "Author",
+        "author_ar": "المؤلف",
+        "era": "classical",
+        "language": "ar",
+        "license": "Public Domain",
+        "url": "https://example.org",
+        "citation_policy": "Cite",
+        "citation_policy_ar": "اذكر المرجع",
+        "source_type": "hadith",
+        "authenticity_level": "sahih",
+        "passages": [
+            {
+                "id": "p_no_url",
+                "arabic_text": "نص",
+                "english_text": "text",
+                "topic_tags": ["hadith"],
+                "reference": {
+                    "collection": "Sahih al-Bukhari",
+                    "book": "Book",
+                    "hadith_number": "10",
+                    "grading_authority": "Sahih",
+                    "display_ar": "مرجع",
+                },
+            }
+        ],
+    }
+    errors = validate_source_record(source)
+    assert any("missing passage_url" in err for err in errors)
