@@ -8,9 +8,9 @@ from typing import Dict, List, Optional
 
 from sqlmodel import select
 
+from app.core.config import settings
 from app.core.db import get_db_session
 from app.models import PassageModel, SourceDocumentModel
-from app.core.config import settings
 from app.schemas import Passage, SourceDocument
 
 
