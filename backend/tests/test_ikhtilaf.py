@@ -13,6 +13,7 @@ def _card(passage_id: str) -> EvidenceCard:
         citation_span=passage_id,
         relevance_score=0.9,
         source_url="https://example.org",
+        passage_url="https://example.org/passage",
         source_type="fiqh",
         authenticity_level="mu_tabar",
         reference=None,
@@ -26,6 +27,7 @@ def test_detects_ikhtilaf_when_two_schools_conflict() -> None:
             source_document_id="src",
             arabic_text="يرى الشافعية أن اللمس ينقض الوضوء",
             english_text="Shafii: direct touching can invalidate wudu.",
+            passage_url="https://example.org/p_shafii",
             topic_tags=["fiqh", "wudu", "shafii", "ikhtilaf"],
         ),
         "p_hanafi": Passage(
@@ -33,6 +35,7 @@ def test_detects_ikhtilaf_when_two_schools_conflict() -> None:
             source_document_id="src",
             arabic_text="يرى الحنفية أن اللمس لا ينقض الوضوء",
             english_text="Hanafi: touching does not invalidate wudu.",
+            passage_url="https://example.org/p_hanafi",
             topic_tags=["fiqh", "wudu", "hanafi", "ikhtilaf"],
         ),
     }
@@ -54,6 +57,7 @@ def test_detects_consensus_when_two_schools_align() -> None:
             source_document_id="src",
             arabic_text="يرى الشافعية أن الفعل ينقض الوضوء",
             english_text="Shafii: this act can invalidate wudu.",
+            passage_url="https://example.org/p_shafii",
             topic_tags=["fiqh", "wudu", "shafii"],
         ),
         "p_hanbali": Passage(
@@ -61,6 +65,7 @@ def test_detects_consensus_when_two_schools_align() -> None:
             source_document_id="src",
             arabic_text="يرى الحنابلة أن الفعل ينقض الوضوء",
             english_text="Hanbali: this act can invalidate wudu.",
+            passage_url="https://example.org/p_hanbali",
             topic_tags=["fiqh", "wudu", "hanbali"],
         ),
     }
@@ -81,6 +86,7 @@ def test_insufficient_when_school_annotations_are_missing() -> None:
             source_document_id="src",
             arabic_text="الدليل يركز على الإحسان.",
             english_text="The evidence focuses on ihsan.",
+            passage_url="https://example.org/p_generic",
             topic_tags=["aqidah", "ihsan"],
         )
     }

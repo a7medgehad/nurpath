@@ -21,9 +21,29 @@ export type EvidenceCard = {
   citation_span: string;
   relevance_score: number;
   source_url: string;
+  passage_url: string;
   source_type: "quran" | "hadith" | "fiqh";
   authenticity_level: string;
   reference?: ReferenceData | null;
+};
+
+export type CitationIntegrityResult = {
+  passed: boolean;
+  coverage: number;
+};
+
+export type ScoreGateResult = {
+  score: number;
+  threshold: number;
+  passed: boolean;
+};
+
+export type ValidationResult = {
+  passed: boolean;
+  citation_integrity: CitationIntegrityResult;
+  grounding: ScoreGateResult;
+  faithfulness: ScoreGateResult;
+  decision_reason: string;
 };
 
 export type OpinionComparisonItem = {
@@ -56,6 +76,7 @@ export type AskResponse = {
   confidence: number;
   safety_notice?: string | null;
   abstained: boolean;
+  validation: ValidationResult;
 };
 
 export type LearningObjective = {

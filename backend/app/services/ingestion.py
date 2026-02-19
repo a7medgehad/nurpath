@@ -115,6 +115,7 @@ def validate_source_record(source: dict) -> list[str]:
         errors.append(f"source {source_id}: fiqh sources must have authenticity_level='mu_tabar'")
 
     passages = source.get("passages", [])
+    is_indexable = bool(source.get("indexable", True))
     if not passages:
         errors.append(f"source {source_id}: passages must not be empty")
         return errors
@@ -126,6 +127,8 @@ def validate_source_record(source: dict) -> list[str]:
             errors.append(f"source {source_id} passage {pid}: missing arabic_text")
         if not passage.get("english_text"):
             errors.append(f"source {source_id} passage {pid}: missing english_text")
+        if is_indexable and not passage.get("passage_url"):
+            errors.append(f"source {source_id} passage {pid}: missing passage_url for indexable source")
         if not passage.get("reference"):
             errors.append(f"source {source_id} passage {pid}: missing reference object")
             continue

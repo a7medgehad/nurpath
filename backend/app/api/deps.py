@@ -5,6 +5,7 @@ from app.services.citation import CitationValidator
 from app.services.learning import SessionManager
 from app.services.quiz import QuizService
 from app.services.retrieval import HybridRetriever
+from app.services.validation import AnswerValidationService
 
 
 @lru_cache
@@ -30,3 +31,8 @@ def get_quiz_service() -> QuizService:
 @lru_cache
 def get_citation_validator() -> CitationValidator:
     return CitationValidator()
+
+
+@lru_cache
+def get_answer_validator() -> AnswerValidationService:
+    return AnswerValidationService(citation_validator=get_citation_validator())

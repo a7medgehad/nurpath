@@ -4,7 +4,6 @@ from typing import List, Optional, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from app.core.config import settings
 from app.schemas import (
     AskResponse,
     EvidenceCard,
@@ -24,6 +23,8 @@ class TutorState(TypedDict):
     preferred_language: str
     intent: TopicIntent
     evidence_cards: List[EvidenceCard]
+    retrieval_avg_top_score: float
+    retrieval_used_expansion: bool
     opinion_comparison: List[OpinionComparisonItem]
     ikhtilaf_analysis: IkhtilafAnalysis
     direct_answer: str
@@ -63,6 +64,8 @@ class NurPathAgentPipeline:
     def _retrieve_node(self, state: TutorState) -> TutorState:
         result: RetrievalResult = self.retriever.retrieve(state["question"])
         state["evidence_cards"] = result.evidence_cards
+        state["retrieval_avg_top_score"] = result.avg_top_score
+        state["retrieval_used_expansion"] = result.used_expansion
         return state
 
     def _compare_node(self, state: TutorState) -> TutorState:
@@ -96,21 +99,43 @@ class NurPathAgentPipeline:
         avg_relevance = 0.0
         if cards:
             avg_relevance = sum(card.relevance_score for card in cards) / len(cards)
-        confidence = min(0.95, 0.2 + (len(cards) * 0.15) + (avg_relevance * 0.4))
+        retrieval_signal = state["retrieval_avg_top_score"]
+        evidence_signal = min(1.0, len(cards) / 4)
+        confidence = min(
+            0.95,
+            0.32 + (0.28 * evidence_signal) + (0.25 * avg_relevance) + (0.15 * retrieval_signal),
+        )
+        top_cards = cards[:2]
 
         if state["preferred_language"] == "en":
+            highlights = " ".join(
+                [
+                    f"{card.source_title}: {card.english_quote[:120]}"
+                    for card in top_cards
+                    if card.english_quote
+                ]
+            )
             answer = (
-                "Here is a learning-focused answer grounded in cited evidence. "
-                "Review the evidence cards and compare differences before selecting practice."
+                "Based on the retrieved evidence, here is a study answer. "
+                + highlights
+                + " Review the evidence cards before applying any ruling."
             )
             if state["ikhtilaf_analysis"].status == "ikhtilaf":
                 answer += " This topic contains valid scholarly disagreement (ikhtilaf)."
             elif state["ikhtilaf_analysis"].status == "consensus":
                 answer += " Retrieved schools align on the core ruling."
         else:
+            highlights = " ".join(
+                [
+                    f"{card.source_title_ar}: {card.arabic_quote[:120]}"
+                    for card in top_cards
+                    if card.arabic_quote
+                ]
+            )
             answer = (
-                "هذه إجابة تعليمية مبنية على الأدلة الموثقة. "
-                "راجع بطاقات الأدلة وقارن بين الأقوال قبل الترجيح أو العمل."
+                "بناءً على الأدلة المسترجعة، هذه إجابة تعليمية: "
+                + highlights
+                + " راجع بطاقات الدليل قبل الترجيح أو العمل."
             )
             if state["ikhtilaf_analysis"].status == "ikhtilaf":
                 answer += " تظهر هنا مساحة اختلاف معتبر بين الأقوال."
@@ -151,8 +176,9 @@ class NurPathAgentPipeline:
                 "حالتي الشخصية",
             ]
         )
+        low_signal = state["confidence"] < 0.2 and not state["evidence_cards"]
 
-        if state["confidence"] < settings.confidence_threshold or sensitive:
+        if low_signal or sensitive:
             state["abstained"] = True
             if state["preferred_language"] == "en":
                 state["direct_answer"] = (
@@ -176,6 +202,8 @@ class NurPathAgentPipeline:
             "preferred_language": preferred_language,
             "intent": TopicIntent.language_learning,
             "evidence_cards": [],
+            "retrieval_avg_top_score": 0.0,
+            "retrieval_used_expansion": False,
             "opinion_comparison": [],
             "ikhtilaf_analysis": IkhtilafAnalysis(
                 status="insufficient",

@@ -92,6 +92,7 @@ def load_catalog() -> CatalogStore:
                 source_document_id=source.id,
                 arabic_text=p["arabic_text"],
                 english_text=p["english_text"],
+                passage_url=p["passage_url"],
                 topic_tags=p.get("topic_tags", []),
                 reference=ReferenceData(**p["reference"]) if p.get("reference") else None,
             )

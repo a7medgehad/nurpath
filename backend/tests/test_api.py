@@ -29,10 +29,12 @@ def test_session_and_ask_flow() -> None:
         assert "direct_answer" in body
         assert "evidence_cards" in body
         assert "ikhtilaf_analysis" in body
+        assert "validation" in body
         assert isinstance(body["confidence"], float)
         assert len(body["evidence_cards"]) >= 1
         assert "source_type" in body["evidence_cards"][0]
         assert "authenticity_level" in body["evidence_cards"][0]
+        assert body["evidence_cards"][0]["passage_url"].startswith("http")
 
 
 def test_get_session() -> None:
@@ -76,8 +78,14 @@ def test_retrieval_health() -> None:
         assert r.status_code == 200
         body = r.json()
         assert body["ok"] is True
+        assert body["profile"] in {"docker-first", "local"}
+        assert isinstance(body["qdrant_connected"], bool)
+        assert isinstance(body["postgres_connected"], bool)
         assert body["citations_valid"] is True
         assert body["indexed_passages"] > 0
+        assert "retrieval_avg_top_score" in body
+        assert "validation_pass_count" in body
+        assert "validation_abstain_count" in body
         assert any("Embedding provider=" in note for note in body["notes"])
         assert any("Source types indexed=" in note for note in body["notes"])
 
@@ -137,6 +145,7 @@ def test_arabic_ask_returns_arabic_display_titles() -> None:
         cards = ask.json()["evidence_cards"]
         assert len(cards) >= 1
         assert all(card["source_title_ar"] for card in cards)
+        assert all(card["passage_url"] for card in cards)
 
 
 def test_quiz_updates_mastery() -> None:

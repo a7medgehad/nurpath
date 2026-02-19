@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import text
 
 from app.api.deps import (
+    get_answer_validator,
     get_citation_validator,
     get_pipeline,
     get_quiz_service,
     get_retriever,
     get_sessions,
 )
+from app.core.db import get_db_session
 from app.schemas import (
     ArchitectureDiagramResponse,
     AskRequest,
@@ -26,6 +29,7 @@ from app.services.citation import CitationValidator
 from app.services.learning import SessionManager
 from app.services.quiz import QuizService
 from app.services.retrieval import HybridRetriever
+from app.services.validation import AnswerValidationService
 
 router = APIRouter(prefix="/v1", tags=["nurpath"])
 
@@ -51,7 +55,7 @@ def ask_question(
     req: AskRequest,
     sessions: SessionManager = Depends(get_sessions),
     pipeline=Depends(get_pipeline),
-    validator: CitationValidator = Depends(get_citation_validator),
+    validator: AnswerValidationService = Depends(get_answer_validator),
 ):
     if not sessions.exists(req.session_id):
         raise HTTPException(status_code=404, detail="Session not found")
@@ -62,19 +66,7 @@ def ask_question(
         preferred_language=req.preferred_language,
     )
 
-    citations_ok = validator.validate_response(response)
-    if not citations_ok:
-        response.abstained = True
-        if req.preferred_language == "ar":
-            response.safety_notice = "تعذر توثيق الاستشهادات بشكل كافٍ؛ تم تحويل الإجابة إلى وضع التحفظ."
-            response.direct_answer = "تعذر تقديم إجابة موثوقة الآن بسبب قيود سلامة الاستشهاد."
-        else:
-            response.safety_notice = "Citation integrity failed. Response downgraded to abstention."
-            response.direct_answer = (
-                "Unable to provide a reliable answer right now due to citation integrity constraints."
-            )
-
-    return response
+    return validator.apply(response=response, preferred_language=req.preferred_language)
 
 
 @router.post("/quiz/generate", response_model=QuizGenerateResponse)
@@ -142,6 +134,7 @@ def list_sources(
 def retrieval_health(
     retriever: HybridRetriever = Depends(get_retriever),
     validator: CitationValidator = Depends(get_citation_validator),
+    answer_validator: AnswerValidationService = Depends(get_answer_validator),
 ):
     test = retriever.retrieve("What are key points in wudu differences?")
     faux = AskResponse(
@@ -154,13 +147,33 @@ def retrieval_health(
         abstained=False,
     )
 
+    diagnostics = retriever.diagnostics()
+    postgres_connected = False
+    try:
+        with get_db_session() as db:
+            db.exec(text("SELECT 1")).first()
+        postgres_connected = True
+    except Exception:
+        postgres_connected = False
+
+    stats = answer_validator.stats_snapshot()
+    qdrant_connected = bool(diagnostics["qdrant_connected"])
+    ok = qdrant_connected and postgres_connected
     return RetrievalHealthResponse(
-        ok=True,
+        ok=ok,
+        profile=str(diagnostics["profile"]),
+        qdrant_connected=qdrant_connected,
+        postgres_connected=postgres_connected,
         citations_valid=validator.validate_response(faux),
         indexed_passages=count_passages_in_db(),
+        retrieval_avg_top_score=float(diagnostics["retrieval_avg_top_score"]),
+        validation_pass_count=stats.pass_count,
+        validation_abstain_count=stats.abstain_count,
         notes=[
             "Hybrid retriever active (vector + lexical)",
             f"Embedding provider={retriever.embedder.__class__.__name__}",
+            f"Retrieval observations={diagnostics['retrieval_observations']}",
+            f"Expansion fallback uses={diagnostics['expansion_uses']}",
             f"Sources count={len(retriever.catalog.sources)}",
             "Source types indexed="
             + ", ".join(
@@ -176,6 +189,7 @@ def retrieval_health(
                 )
             ),
             "Citation validator active",
+            "Answer validation gate active",
         ],
     )
 
