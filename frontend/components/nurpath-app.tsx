@@ -1,22 +1,63 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
-import { AskResponse, askQuestion, createSession } from "@/lib/api";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  AskResponse,
+  LearningObjective,
+  QuizGenerateResponse,
+  QuizGradeResponse,
+  askQuestion,
+  createSession,
+  generateQuiz,
+  getSources,
+  gradeQuiz,
+} from "@/lib/api";
 
 export function NurPathApp() {
   const [language, setLanguage] = useState<"ar" | "en">("ar");
   const [question, setQuestion] = useState("ما الفرق في الوضوء عند لمس الزوجة؟");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [roadmap, setRoadmap] = useState<LearningObjective[]>([]);
   const [result, setResult] = useState<AskResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [sourceTopic, setSourceTopic] = useState("fiqh");
+  const [sourceQuery, setSourceQuery] = useState("");
+  const [sources, setSources] = useState<
+    {
+      id: string;
+      title: string;
+      author: string;
+      language: string;
+      license: string;
+      url: string;
+    }[]
+  >([]);
+  const [sourceLoading, setSourceLoading] = useState(false);
+
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quiz, setQuiz] = useState<QuizGenerateResponse | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
+  const [quizGrade, setQuizGrade] = useState<QuizGradeResponse | null>(null);
+
   const dir = useMemo(() => (language === "ar" ? "rtl" : "ltr"), [language]);
+
+  async function ensureSession(): Promise<string> {
+    if (sessionId) return sessionId;
+    const s = await createSession(language);
+    setSessionId(s.session_id);
+    setRoadmap(s.roadmap);
+    return s.session_id;
+  }
 
   async function handleCreateSession() {
     setError(null);
     const s = await createSession(language);
     setSessionId(s.session_id);
+    setRoadmap(s.roadmap);
+    setQuiz(null);
+    setQuizGrade(null);
   }
 
   async function handleAsk(e: FormEvent) {
@@ -25,17 +66,7 @@ export function NurPathApp() {
     setError(null);
 
     try {
-      let sid = sessionId;
-      if (!sid) {
-        const s = await createSession(language);
-        sid = s.session_id;
-        setSessionId(sid);
-      }
-
-      if (!sid) {
-        throw new Error("Session initialization failed");
-      }
-
+      const sid = await ensureSession();
       const response = await askQuestion({
         session_id: sid,
         question,
@@ -48,6 +79,71 @@ export function NurPathApp() {
       setLoading(false);
     }
   }
+
+  async function handleLoadSources(e?: FormEvent) {
+    e?.preventDefault();
+    setSourceLoading(true);
+    try {
+      const payload = await getSources({
+        topic: sourceTopic || undefined,
+        q: sourceQuery || undefined,
+        language: language === "ar" ? "ar" : undefined,
+      });
+      setSources(payload.items);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error");
+    } finally {
+      setSourceLoading(false);
+    }
+  }
+
+  async function handleGenerateQuiz() {
+    setQuizLoading(true);
+    setError(null);
+    try {
+      const sid = await ensureSession();
+      const objectiveId = roadmap[0]?.id;
+      if (!objectiveId) {
+        throw new Error("No learning objective available yet. Create a session first.");
+      }
+      const q = await generateQuiz({
+        session_id: sid,
+        objective_id: objectiveId,
+        num_questions: 3,
+      });
+      setQuiz(q);
+      setQuizAnswers({});
+      setQuizGrade(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error");
+    } finally {
+      setQuizLoading(false);
+    }
+  }
+
+  async function handleGradeQuiz() {
+    if (!quiz) return;
+    setQuizLoading(true);
+    setError(null);
+    try {
+      const sid = await ensureSession();
+      const grade = await gradeQuiz({
+        session_id: sid,
+        objective_id: quiz.objective_id,
+        answers: quizAnswers,
+      });
+      setQuizGrade(grade);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error");
+    } finally {
+      setQuizLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void handleLoadSources();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 md:px-8" dir={dir}>
@@ -124,6 +220,80 @@ export function NurPathApp() {
 
           {error && <p className="text-sm text-red-700">{error}</p>}
         </form>
+      </section>
+
+      <section className="mt-8 grid gap-4 md:grid-cols-2">
+        <article className="card-enter rounded-3xl border border-white/70 bg-white/85 p-5 shadow-soft">
+          <h3 className="text-lg font-bold text-ink">{language === "ar" ? "مستكشف المصادر" : "Source Explorer"}</h3>
+          <form className="mt-3 grid gap-3" onSubmit={handleLoadSources}>
+            <input
+              className="rounded-xl border border-ink/15 bg-white px-3 py-2 text-sm"
+              value={sourceTopic}
+              onChange={(e) => setSourceTopic(e.target.value)}
+              placeholder={language === "ar" ? "موضوع (مثل: fiqh)" : "Topic (e.g. fiqh)"}
+            />
+            <input
+              className="rounded-xl border border-ink/15 bg-white px-3 py-2 text-sm"
+              value={sourceQuery}
+              onChange={(e) => setSourceQuery(e.target.value)}
+              placeholder={language === "ar" ? "بحث بالنص" : "Text search"}
+            />
+            <button className="rounded-xl bg-oasis px-4 py-2 text-sm font-semibold text-white" type="submit">
+              {sourceLoading ? (language === "ar" ? "جاري التحميل..." : "Loading...") : language === "ar" ? "تحديث" : "Refresh"}
+            </button>
+          </form>
+
+          <div className="mt-4 max-h-80 space-y-2 overflow-auto">
+            {sources.map((s) => (
+              <a key={s.id} href={s.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-ink/10 p-3 hover:bg-sand/40">
+                <p className="text-sm font-semibold text-ink">{s.title}</p>
+                <p className="text-xs text-ink/70">{s.author} • {s.language} • {s.license}</p>
+              </a>
+            ))}
+            {sources.length === 0 && <p className="text-sm text-ink/70">{language === "ar" ? "لا توجد نتائج." : "No sources found."}</p>}
+          </div>
+        </article>
+
+        <article className="card-enter rounded-3xl border border-white/70 bg-white/85 p-5 shadow-soft">
+          <h3 className="text-lg font-bold text-ink">{language === "ar" ? "تقييم التعلم" : "Learning Quiz"}</h3>
+          <button
+            className="mt-3 rounded-xl bg-warm px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            type="button"
+            onClick={handleGenerateQuiz}
+            disabled={quizLoading}
+          >
+            {quizLoading ? (language === "ar" ? "جاري التحضير..." : "Preparing...") : language === "ar" ? "إنشاء اختبار" : "Generate Quiz"}
+          </button>
+
+          {quiz && (
+            <div className="mt-4 space-y-3">
+              {quiz.questions.map((q, idx) => (
+                <div key={q.id} className="rounded-xl border border-ink/10 p-3">
+                  <p className="text-sm font-semibold text-ink">{idx + 1}. {q.prompt}</p>
+                  <textarea
+                    className="mt-2 min-h-20 w-full rounded-lg border border-ink/15 p-2 text-sm"
+                    value={quizAnswers[q.id] ?? ""}
+                    onChange={(e) => setQuizAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                  />
+                </div>
+              ))}
+              <button
+                className="rounded-xl bg-oasis px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                type="button"
+                onClick={handleGradeQuiz}
+                disabled={quizLoading}
+              >
+                {language === "ar" ? "تصحيح" : "Grade"}
+              </button>
+            </div>
+          )}
+
+          {quizGrade && (
+            <p className="mt-3 rounded-lg bg-sand px-3 py-2 text-sm text-ink">
+              {language === "ar" ? "النتيجة" : "Score"}: {(quizGrade.score * 100).toFixed(0)}%
+            </p>
+          )}
+        </article>
       </section>
 
       {result && (
