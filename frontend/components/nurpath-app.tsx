@@ -101,8 +101,16 @@ export function NurPathApp() {
     setQuizLoading(true);
     setError(null);
     try {
-      const sid = await ensureSession();
-      const objectiveId = roadmap[0]?.id;
+      let sid = sessionId;
+      let currentRoadmap = roadmap;
+      if (!sid || currentRoadmap.length === 0) {
+        const created = await createSession(language);
+        sid = created.session_id;
+        currentRoadmap = created.roadmap;
+        setSessionId(created.session_id);
+        setRoadmap(created.roadmap);
+      }
+      const objectiveId = currentRoadmap[0]?.id;
       if (!objectiveId) {
         throw new Error("No learning objective available yet. Create a session first.");
       }

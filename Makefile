@@ -1,4 +1,4 @@
-.PHONY: backend-install backend-lint backend-test backend-cov backend-run frontend-install frontend-run smoke
+.PHONY: backend-install backend-lint backend-test backend-cov backend-run frontend-install frontend-run smoke e2e generate-mermaid
 
 backend-install:
 	cd backend && python3 -m venv .venv && . .venv/bin/activate && pip install -e .[dev]
@@ -23,3 +23,9 @@ frontend-run:
 
 smoke:
 	./scripts/smoke_backend.sh
+
+e2e:
+	./scripts/run_e2e.sh
+
+generate-mermaid:
+	cd backend && . .venv/bin/activate && PYTHONPATH=. ../scripts/generate_langgraph_mermaid.py

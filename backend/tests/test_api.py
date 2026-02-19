@@ -29,6 +29,7 @@ def test_session_and_ask_flow() -> None:
         assert "direct_answer" in body
         assert "evidence_cards" in body
         assert isinstance(body["confidence"], float)
+        assert len(body["evidence_cards"]) >= 1
 
 
 def test_get_session() -> None:
@@ -74,6 +75,7 @@ def test_retrieval_health() -> None:
         assert body["ok"] is True
         assert body["citations_valid"] is True
         assert body["indexed_passages"] > 0
+        assert any("Embedding provider=" in note for note in body["notes"])
 
 
 def test_source_lookup() -> None:
@@ -122,3 +124,13 @@ def test_quiz_updates_mastery() -> None:
         assert grade.status_code == 200
         assert grade.json()["score"] >= 0.5
         assert grade.json()["updated_mastery"][objective_id] > 0.0
+
+
+def test_langgraph_mermaid_endpoint() -> None:
+    with get_client() as client:
+        r = client.get("/v1/architecture/langgraph-mermaid")
+        assert r.status_code == 200
+        mermaid = r.json()["mermaid"]
+        assert "graph" in mermaid.lower()
+        assert "intent" in mermaid.lower()
+        assert "retrieve" in mermaid.lower()

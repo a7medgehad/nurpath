@@ -1,30 +1,100 @@
 # NurPath Architecture
 
-## High-Level Components
+## System Overview
 
-1. Frontend (Next.js)
-2. Backend API (FastAPI)
-3. Agent Orchestration (LangGraph)
-4. Retrieval Layer (Qdrant + lexical fallback)
-5. Metadata Store (SQLite/PostgreSQL)
-6. Evaluation and Safety Gates
+NurPath is a bilingual (Arabic/English) learning platform with an evidence-first RAG backend and a LangGraph multi-agent tutor pipeline.
 
-## Request Flow (`POST /v1/ask`)
+### Core layers
 
-1. Intent classification (aqidah, fiqh, akhlaq, history, language learning)
-2. Hybrid retrieval (dense + lexical)
-3. Opinion comparison extraction
-4. Tutor response synthesis
-5. Safety guard checks (abstain/escalate if needed)
-6. Citation-span validation
+1. `frontend/` Next.js UI for tutoring, source exploration, and quiz workflows.
+2. `backend/app/api` FastAPI APIs with typed response contracts.
+3. `backend/app/agents` LangGraph execution graph for intent, retrieval, comparison, tutoring, and safety.
+4. `backend/app/services/retrieval.py` hybrid retrieval (Qdrant vector + lexical fusion).
+5. `backend/app/services/embeddings.py` embedding provider abstraction.
+6. `backend/app/services/citation.py` citation integrity guard.
 
-## Data Contracts
+## Technical Architecture Diagram
 
-- Every `evidence_card` contains source IDs and exact spans.
-- `confidence < threshold` must produce abstain behavior.
-- `opinion_comparison` is empty only when no reliable divergence exists.
+```mermaid
+flowchart LR
+  UI["Next.js Web App"] --> API["FastAPI API"]
+  API --> AG["LangGraph Multi-Agent Pipeline"]
+  AG --> INT["Intent Agent"]
+  AG --> RET["Retriever Agent"]
+  AG --> CMP["Comparison Agent"]
+  AG --> TUT["Tutor Agent"]
+  AG --> SAFE["Safety Agent"]
 
-## Deployment
+  RET --> EMB["Embedding Provider\nHash / SentenceTransformer"]
+  RET --> VDB["Qdrant Vector Store"]
+  RET --> LEX["Lexical Matcher"]
+  RET --> CAT["Curated Source Catalog"]
 
-- Local: Docker Compose for Qdrant/Postgres + direct app processes
-- Cloud: containerized frontend and backend; managed free-tier vector and postgres where possible
+  API --> SQL["SQLite / PostgreSQL\nSessions + Lesson Paths"]
+  API --> VAL["Citation Validator"]
+  VAL --> CAT
+```
+
+## LangGraph Runtime Topology
+
+Generated from the compiled graph in `backend/app/agents/pipeline.py`.
+
+```mermaid
+graph TD;
+  __start__ --> intent;
+  intent --> retrieve;
+  retrieve --> compare;
+  compare --> tutor;
+  tutor --> safety;
+  safety --> __end__;
+```
+
+## Retrieval and RAG Mechanics
+
+1. Normalize question text (Arabic diacritics removed + token cleanup).
+2. Generate embedding vector for query.
+3. Query Qdrant for vector candidates.
+4. Compute lexical overlap scores over catalog passages.
+5. Fuse vector and lexical scores into final ranking.
+6. Return top evidence cards with strict source references.
+7. Run citation validation before response finalization.
+
+## API Contracts
+
+### `POST /v1/ask`
+
+Outputs:
+
+- `direct_answer`
+- `evidence_cards[]`
+- `opinion_comparison[]`
+- `confidence`
+- `next_lesson`
+- `safety_notice`
+- `abstained`
+
+### `GET /v1/architecture/langgraph-mermaid`
+
+Returns generated Mermaid diagram for the active LangGraph pipeline.
+
+## Safety and Trust Guarantees
+
+- Claims must have evidence cards unless abstaining.
+- Confidence threshold controls abstention.
+- Sensitive/fatwa-personal prompts trigger non-authoritative guidance and escalation.
+- Citation span must match retrieved passage IDs.
+
+## Testing Strategy
+
+- Backend unit/integration tests (`pytest`) for sessions, ask flow, retrieval health, source filtering, quiz scoring, and diagram endpoint.
+- Frontend static checks (`lint`, `typecheck`, `build`).
+- Browser E2E tests (Playwright) for:
+  - ask flow + evidence rendering
+  - source explorer
+  - quiz generation and grading
+  - safety abstention UX
+
+## Deployment Notes
+
+- Default setup uses local in-memory Qdrant mode for portability.
+- Production can switch to external Qdrant via `QDRANT_URL` and disable local mode.

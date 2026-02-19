@@ -14,6 +14,11 @@ class Settings(BaseSettings):
 
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "nurpath_passages"
+    qdrant_local_mode: bool = True
+
+    embedding_provider: str = "hash"
+    embedding_model_name: str = "BAAI/bge-m3"
+    embedding_dimension: int = 384
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

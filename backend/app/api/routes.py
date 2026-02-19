@@ -8,6 +8,7 @@ from app.api.deps import (
     get_sessions,
 )
 from app.schemas import (
+    ArchitectureDiagramResponse,
     AskRequest,
     AskResponse,
     QuizGenerateRequest,
@@ -128,5 +129,14 @@ def retrieval_health(
         ok=True,
         citations_valid=validator.validate_response(faux),
         indexed_passages=count_passages_in_db(),
-        notes=["Hybrid retriever active", "Citation validator active"],
+        notes=[
+            "Hybrid retriever active (vector + lexical)",
+            f"Embedding provider={retriever.embedder.__class__.__name__}",
+            "Citation validator active",
+        ],
     )
+
+
+@router.get("/architecture/langgraph-mermaid", response_model=ArchitectureDiagramResponse)
+def langgraph_mermaid(pipeline=Depends(get_pipeline)):
+    return ArchitectureDiagramResponse(mermaid=pipeline.mermaid())

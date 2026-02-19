@@ -14,6 +14,8 @@ __pycache__/
 node_modules/
 .next/
 out/
+test-results/
+playwright-report/
 
 # Env
 .env

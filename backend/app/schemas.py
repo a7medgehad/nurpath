@@ -139,3 +139,7 @@ class RetrievalHealthResponse(BaseModel):
     citations_valid: bool
     indexed_passages: int
     notes: List[str] = Field(default_factory=list)
+
+
+class ArchitectureDiagramResponse(BaseModel):
+    mermaid: str
