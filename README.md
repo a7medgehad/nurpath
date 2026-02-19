@@ -26,6 +26,7 @@ It focuses on an unmet need: **Ikhtilaf-aware pedagogy**. Instead of a single fl
 - `POST /v1/ask`
 - `POST /v1/quiz/generate`
 - `POST /v1/quiz/grade`
+- `GET /v1/sources` (with optional `language`, `topic`, `q` filters)
 - `GET /v1/sources/{id}`
 - `GET /v1/health/retrieval`
 

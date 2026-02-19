@@ -11,9 +11,10 @@ from app.schemas import (
     RetrievalHealthResponse,
     SessionCreateRequest,
     SessionCreateResponse,
+    SourceListResponse,
     SourceDocument,
 )
-from app.services.catalog import count_passages_in_db, load_catalog
+from app.services.catalog import count_passages_in_db, filter_sources, load_catalog
 from app.services.citation import CitationValidator
 from app.services.learning import SessionManager
 from app.services.quiz import QuizService
@@ -89,6 +90,16 @@ def get_source(source_id: str):
     if not source:
         raise HTTPException(status_code=404, detail="Source not found")
     return source
+
+
+@router.get("/sources", response_model=SourceListResponse)
+def list_sources(
+    language: str | None = None,
+    topic: str | None = None,
+    q: str | None = None,
+):
+    items = filter_sources(language=language, topic=topic, q=q)
+    return SourceListResponse(items=items, total=len(items))
 
 
 @router.get("/health/retrieval", response_model=RetrievalHealthResponse)

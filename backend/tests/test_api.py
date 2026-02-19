@@ -83,6 +83,21 @@ def test_source_lookup() -> None:
         assert r.json()["id"] == "src_quran_49_13"
 
 
+def test_source_list_filtering() -> None:
+    with get_client() as client:
+        all_sources = client.get("/v1/sources")
+        assert all_sources.status_code == 200
+        assert all_sources.json()["total"] >= 1
+
+        fiqh_sources = client.get("/v1/sources?topic=fiqh")
+        assert fiqh_sources.status_code == 200
+        assert fiqh_sources.json()["total"] >= 1
+
+        ar_sources = client.get("/v1/sources?language=ar")
+        assert ar_sources.status_code == 200
+        assert ar_sources.json()["total"] >= 1
+
+
 def test_quiz_updates_mastery() -> None:
     with get_client() as client:
         session = client.post(
