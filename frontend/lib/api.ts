@@ -24,9 +24,61 @@ export type AskResponse = {
   abstained: boolean;
 };
 
+export type LearningObjective = {
+  id: string;
+  title: string;
+  difficulty: string;
+  prerequisites: string[];
+  expected_outcomes: string[];
+};
+
+export type SessionCreateResponse = {
+  session_id: string;
+  roadmap: LearningObjective[];
+  lesson_path: {
+    session_id: string;
+    objective_ids: string[];
+    mastery_state: Record<string, number>;
+  };
+};
+
+export type SourceDocument = {
+  id: string;
+  title: string;
+  author: string;
+  era: string;
+  language: string;
+  license: string;
+  url: string;
+  citation_policy: string;
+};
+
+export type SourceListResponse = {
+  items: SourceDocument[];
+  total: number;
+};
+
+export type QuizQuestion = {
+  id: string;
+  prompt: string;
+  expected_keywords: string[];
+};
+
+export type QuizGenerateResponse = {
+  objective_id: string;
+  questions: QuizQuestion[];
+};
+
+export type QuizGradeResponse = {
+  objective_id: string;
+  score: number;
+  feedback: Record<string, string>;
+  updated_mastery: Record<string, number>;
+};
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export async function createSession(preferred_language: "ar" | "en") {
+export async function createSession(preferred_language: "ar" | "en"): Promise<SessionCreateResponse> {
   const r = await fetch(`${API_BASE}/v1/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -51,5 +103,49 @@ export async function askQuestion(
   });
 
   if (!r.ok) throw new Error("Failed to ask question");
+  return r.json();
+}
+
+export async function getSources(filters?: {
+  language?: string;
+  topic?: string;
+  q?: string;
+}): Promise<SourceListResponse> {
+  const params = new URLSearchParams();
+  if (filters?.language) params.set("language", filters.language);
+  if (filters?.topic) params.set("topic", filters.topic);
+  if (filters?.q) params.set("q", filters.q);
+
+  const query = params.toString();
+  const r = await fetch(`${API_BASE}/v1/sources${query ? `?${query}` : ""}`);
+  if (!r.ok) throw new Error("Failed to load sources");
+  return r.json();
+}
+
+export async function generateQuiz(payload: {
+  session_id: string;
+  objective_id: string;
+  num_questions: number;
+}): Promise<QuizGenerateResponse> {
+  const r = await fetch(`${API_BASE}/v1/quiz/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error("Failed to generate quiz");
+  return r.json();
+}
+
+export async function gradeQuiz(payload: {
+  session_id: string;
+  objective_id: string;
+  answers: Record<string, string>;
+}): Promise<QuizGradeResponse> {
+  const r = await fetch(`${API_BASE}/v1/quiz/grade`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error("Failed to grade quiz");
   return r.json();
 }
