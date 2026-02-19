@@ -1,38 +1,46 @@
 # NurPath
 
-NurPath is an open-source Arabic-English Islamic learning tutor built with agentic AI, RAG, and vector search.
+NurPath is an open-source Arabic-English Islamic learning tutor built with agentic AI, LangGraph, hybrid RAG, and vector search.
 
-It focuses on an unmet need: **Ikhtilaf-aware pedagogy**. Instead of a single flattened answer, NurPath teaches with evidence, shows major scholarly positions, explains uncertainty, and recommends the next learning step.
+It is designed for **Ikhtilaf-aware pedagogy**: answers include evidence, compare valid scholarly perspectives, and suggest the next learning step.
 
-## Core Principles
+## Why This Project
 
-- Every generated claim must map to at least one citation span.
-- Evidence is first-class: Arabic source text + bilingual explanation.
-- Disagreement is represented, not hidden.
-- Sensitive personal-fatwa questions trigger educational framing and scholar escalation guidance.
+Most assistants flatten differences into a single answer. NurPath keeps disagreement explicit and traceable while enforcing citation integrity and safety constraints.
 
-## Monorepo Structure
+## Key Features
 
-- `backend/` FastAPI API, multi-agent orchestration, retrieval, and citation validation
-- `frontend/` Next.js bilingual web app (RTL/LTR aware)
-- `docs/` architecture, data policy, and GitHub growth playbook
-- `eval/` evaluation dataset and scripts
-- `.github/` CI and collaboration templates
+- Multi-agent tutoring flow (Intent -> Retrieve -> Compare -> Tutor -> Safety)
+- Hybrid retrieval (Qdrant vector search + lexical ranking fusion)
+- Embedding provider abstraction (offline hash default, optional sentence-transformers)
+- Citation-span validation guard
+- Session roadmap + quiz generation + mastery updates
+- Arabic/English UI with RTL/LTR support
 
-## APIs (MVP)
+## Repository Layout
+
+- `backend/` FastAPI API, LangGraph orchestration, retrieval, and policy guards
+- `frontend/` Next.js app for tutoring, source exploration, and quiz interaction
+- `docs/` technical architecture and policies
+- `data/` curated sample corpus + allowlist metadata
+- `eval/` evaluation dataset and script
+- `scripts/` smoke, E2E, and architecture generation helpers
+
+## API Endpoints
 
 - `POST /v1/sessions`
 - `GET /v1/sessions/{session_id}`
 - `POST /v1/ask`
 - `POST /v1/quiz/generate`
 - `POST /v1/quiz/grade`
-- `GET /v1/sources` (with optional `language`, `topic`, `q` filters)
+- `GET /v1/sources`
 - `GET /v1/sources/{id}`
 - `GET /v1/health/retrieval`
+- `GET /v1/architecture/langgraph-mermaid`
 
 ## Quick Start
 
-### 1) Infrastructure (Qdrant + Postgres)
+### 1) Optional infrastructure
 
 ```bash
 docker compose up -d qdrant postgres
@@ -56,49 +64,62 @@ npm install
 npm run dev
 ```
 
-The frontend expects backend at `http://localhost:8000`.
+Frontend expects backend at `http://localhost:8000`.
 
-## Quality Gates (Local)
+## Quality and Test Commands
+
+### Backend
 
 ```bash
 make backend-lint
 make backend-cov
+```
+
+### Frontend
+
+```bash
 cd frontend && npm run lint && npm run typecheck && npm run build
 ```
 
-With backend running:
+### API smoke test
 
 ```bash
 make smoke
 ```
 
-## Open-Source / Free Tooling
+### Full browser E2E test
 
-- FastAPI + Pydantic + SQLModel
-- LangGraph for agent orchestration
-- Qdrant for vector search
-- PostgreSQL/SQLite metadata storage
-- Next.js + Tailwind CSS
-- Prometheus + OpenTelemetry ready instrumentation
+```bash
+make e2e
+```
 
-## Evaluation Targets
+## Configuration
 
-- Citation integrity: no dangling citations
-- Hallucination control: abstain on unsupported prompts
-- Bilingual consistency: Arabic/English semantic parity
-- Ikhtilaf fidelity: multiple valid positions where applicable
+Environment variables are documented in `.env.example`.
+
+Important retrieval-related keys:
+
+- `QDRANT_URL`
+- `QDRANT_COLLECTION`
+- `QDRANT_LOCAL_MODE`
+- `EMBEDDING_PROVIDER` (`hash` or `sentence_transformers`)
+- `EMBEDDING_MODEL_NAME`
+- `EMBEDDING_DIMENSION`
+
+## Architecture
+
+- Technical architecture: `docs/architecture.md`
+- Generated LangGraph mermaid file: `docs/langgraph_agent_flow.mmd`
+
+Regenerate mermaid from live graph:
+
+```bash
+make generate-mermaid
+```
 
 ## Safety Statement
 
 NurPath is educational software. It does not replace qualified scholarship or legal/religious counsel.
-
-## API Smoke Example
-
-```bash
-curl -X POST http://localhost:8000/v1/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"preferred_language":"en","level":"beginner","goals":["learn wudu"]}'
-```
 
 ## License
 

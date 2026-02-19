@@ -134,6 +134,8 @@ class NurPathAgentPipeline:
                 "my divorce",
                 "طلاقي",
                 "specific fatwa",
+                "fatwa",
+                "فتوى",
                 "personal ruling",
                 "case-specific",
                 "حالتي الشخصية",
@@ -183,3 +185,6 @@ class NurPathAgentPipeline:
             safety_notice=result["safety_notice"],
             abstained=result["abstained"],
         )
+
+    def mermaid(self) -> str:
+        return self.graph.get_graph().draw_mermaid()
