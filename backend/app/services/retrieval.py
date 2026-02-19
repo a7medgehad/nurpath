@@ -59,8 +59,13 @@ class HybridRetriever:
         self.catalog = load_catalog()
         self.embedder: Embedder = get_embedder()
         self.client = self._build_client()
+        total_weight = settings.retrieval_lexical_weight + settings.retrieval_vector_weight
+        if total_weight <= 0:
+            raise ValueError("Retrieval weights must sum to a positive value.")
         self._top_scores: deque[float] = deque(maxlen=200)
         self._expansion_uses = 0
+        self._collection_vector_size = 0
+        self._reindex_required = False
         self._ensure_collection()
         self._upsert_passages()
 
@@ -95,12 +100,17 @@ class HybridRetriever:
             "retrieval_avg_top_score": round(avg, 4),
             "retrieval_observations": len(self._top_scores),
             "expansion_uses": self._expansion_uses,
+            "embedding_provider": self.embedder.provider_name,
+            "embedding_model_name": self.embedder.model_name,
+            "embedding_dimension": self.embedder.dimension,
+            "qdrant_collection_vector_size": self._collection_vector_size,
+            "reindex_required": self._reindex_required,
         }
 
     def _build_client(self) -> QdrantClient:
         if settings.qdrant_local_mode:
             return QdrantClient(location=":memory:")
-        return QdrantClient(url=settings.qdrant_url)
+        return QdrantClient(url=settings.qdrant_url, check_compatibility=False)
 
     def _is_qdrant_connected(self) -> bool:
         try:
@@ -111,12 +121,35 @@ class HybridRetriever:
 
     def _ensure_collection(self) -> None:
         existing = {c.name for c in self.client.get_collections().collections}
-        if settings.qdrant_collection in existing:
+        if settings.qdrant_collection not in existing:
+            self.client.create_collection(
+                collection_name=settings.qdrant_collection,
+                vectors_config=VectorParams(size=self.embedder.dimension, distance=Distance.COSINE),
+            )
+            self._collection_vector_size = self.embedder.dimension
             return
-        self.client.create_collection(
-            collection_name=settings.qdrant_collection,
-            vectors_config=VectorParams(size=self.embedder.dimension, distance=Distance.COSINE),
-        )
+
+        current_size = self._get_collection_vector_size(settings.qdrant_collection)
+        self._collection_vector_size = current_size
+        if current_size != self.embedder.dimension:
+            self._reindex_required = True
+            self.client.delete_collection(collection_name=settings.qdrant_collection)
+            self.client.create_collection(
+                collection_name=settings.qdrant_collection,
+                vectors_config=VectorParams(size=self.embedder.dimension, distance=Distance.COSINE),
+            )
+            self._collection_vector_size = self.embedder.dimension
+
+    def _get_collection_vector_size(self, collection_name: str) -> int:
+        info = self.client.get_collection(collection_name=collection_name)
+        vectors_cfg = info.config.params.vectors
+        if hasattr(vectors_cfg, "size"):
+            return int(vectors_cfg.size)
+        if isinstance(vectors_cfg, dict):
+            first = next(iter(vectors_cfg.values()), None)
+            if first is not None and hasattr(first, "size"):
+                return int(first.size)
+        return self.embedder.dimension
 
     def _upsert_passages(self) -> None:
         passages = list(self.catalog.passages.values())
@@ -124,7 +157,7 @@ class HybridRetriever:
             return
 
         texts = [f"{p.arabic_text}\n{p.english_text}" for p in passages]
-        vectors = self.embedder.embed(texts)
+        vectors = self.embedder.embed_passages(texts)
 
         points = [
             PointStruct(
@@ -167,7 +200,7 @@ class HybridRetriever:
         }
 
     def _vector_scores(self, question: str, limit: int) -> Dict[str, float]:
-        vector = self.embedder.embed([question])[0]
+        vector = self.embedder.embed_queries([question])[0]
         response = self.client.query_points(
             collection_name=settings.qdrant_collection,
             query=vector,
@@ -226,7 +259,13 @@ class HybridRetriever:
             passage_tags = {tag.lower() for tag in passage.topic_tags}
             intent_tags = INTENT_TAGS.get(intent, set())
             intent_bonus = 0.04 if passage_tags.intersection(intent_tags) else 0.0
-            combined = (0.45 * lexical) + (0.45 * vector) + priority_bonus + authenticity_bonus + intent_bonus
+            combined = (
+                (settings.retrieval_lexical_weight * lexical)
+                + (settings.retrieval_vector_weight * vector)
+                + priority_bonus
+                + authenticity_bonus
+                + intent_bonus
+            )
             if combined <= 0.0:
                 continue
             ranked.append((passage_id, combined))

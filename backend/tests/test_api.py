@@ -81,6 +81,11 @@ def test_retrieval_health() -> None:
         assert body["profile"] in {"docker-first", "local"}
         assert isinstance(body["qdrant_connected"], bool)
         assert isinstance(body["postgres_connected"], bool)
+        assert body["embedding_provider"] in {"hash", "sentence_transformers"}
+        assert isinstance(body["embedding_model_name"], str)
+        assert isinstance(body["embedding_dimension"], int)
+        assert isinstance(body["qdrant_collection_vector_size"], int)
+        assert isinstance(body["reindex_required"], bool)
         assert body["citations_valid"] is True
         assert body["indexed_passages"] > 0
         assert "retrieval_avg_top_score" in body

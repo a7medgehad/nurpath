@@ -1,17 +1,43 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 import re
-from typing import Protocol
+from typing import Literal, Protocol
 
 from app.core.config import settings
+
+logger = logging.getLogger("nurpath.embeddings")
+
+EmbeddingMode = Literal["query", "passage"]
+
+
+def is_e5_model(model_name: str) -> bool:
+    return "e5" in model_name.lower()
+
+
+def prepare_texts_for_embedding(
+    texts: list[str], *, mode: EmbeddingMode, model_name: str
+) -> list[str]:
+    if not is_e5_model(model_name):
+        return texts
+    prefix = "query: " if mode == "query" else "passage: "
+    return [f"{prefix}{text}" for text in texts]
 
 
 class Embedder(Protocol):
     dimension: int
+    provider_name: str
+    model_name: str
 
     def embed(self, texts: list[str]) -> list[list[float]]:
+        ...
+
+    def embed_queries(self, texts: list[str]) -> list[list[float]]:
+        ...
+
+    def embed_passages(self, texts: list[str]) -> list[list[float]]:
         ...
 
 
@@ -22,6 +48,9 @@ class HashEmbedder:
     It is not as semantically strong as transformer embeddings, but guarantees a
     working vector retrieval path without external model downloads.
     """
+
+    provider_name = "hash"
+    model_name = "deterministic-hash"
 
     def __init__(self, dimension: int = 384) -> None:
         self.dimension = dimension
@@ -55,8 +84,16 @@ class HashEmbedder:
     def embed(self, texts: list[str]) -> list[list[float]]:
         return [self._embed_one(text) for text in texts]
 
+    def embed_queries(self, texts: list[str]) -> list[list[float]]:
+        return self.embed(texts)
+
+    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        return self.embed(texts)
+
 
 class SentenceTransformerEmbedder:
+    provider_name = "sentence_transformers"
+
     def __init__(self, model_name: str) -> None:
         try:
             from sentence_transformers import SentenceTransformer
@@ -65,18 +102,44 @@ class SentenceTransformerEmbedder:
                 "sentence-transformers is not installed; use embedding_provider=hash or install it"
             ) from exc
 
+        self.model_name = model_name
         self._model = SentenceTransformer(model_name)
         self.dimension = int(self._model.get_sentence_embedding_dimension())
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        vectors = self._model.encode(texts, normalize_embeddings=True)
+    def _encode(self, texts: list[str], *, mode: EmbeddingMode) -> list[list[float]]:
+        prepared = prepare_texts_for_embedding(texts, mode=mode, model_name=self.model_name)
+        vectors = self._model.encode(prepared, normalize_embeddings=True)
         return [list(map(float, row)) for row in vectors]
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        return self._encode(texts, mode="passage")
+
+    def embed_queries(self, texts: list[str]) -> list[list[float]]:
+        return self._encode(texts, mode="query")
+
+    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        return self._encode(texts, mode="passage")
 
 
 def get_embedder() -> Embedder:
     if settings.embedding_provider == "sentence_transformers":
         try:
-            return SentenceTransformerEmbedder(settings.embedding_model_name)
-        except RuntimeError:
+            embedder = SentenceTransformerEmbedder(settings.embedding_model_name)
+            logger.info(
+                "Embedding provider active: %s (%s), dim=%s",
+                embedder.provider_name,
+                embedder.model_name,
+                embedder.dimension,
+            )
+            return embedder
+        except RuntimeError as exc:
+            logger.warning("Falling back to hash embeddings: %s", exc)
             return HashEmbedder(settings.embedding_dimension)
-    return HashEmbedder(settings.embedding_dimension)
+    embedder = HashEmbedder(settings.embedding_dimension)
+    logger.info(
+        "Embedding provider active: %s (%s), dim=%s",
+        embedder.provider_name,
+        embedder.model_name,
+        embedder.dimension,
+    )
+    return embedder

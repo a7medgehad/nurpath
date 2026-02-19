@@ -29,6 +29,11 @@ def test_retrieval_health_reports_runtime_and_validation_counters() -> None:
         assert payload["profile"] in {"docker-first", "local"}
         assert isinstance(payload["qdrant_connected"], bool)
         assert isinstance(payload["postgres_connected"], bool)
+        assert payload["embedding_provider"] in {"hash", "sentence_transformers"}
+        assert isinstance(payload["embedding_model_name"], str)
+        assert isinstance(payload["embedding_dimension"], int)
+        assert isinstance(payload["qdrant_collection_vector_size"], int)
+        assert isinstance(payload["reindex_required"], bool)
         assert isinstance(payload["retrieval_avg_top_score"], float)
         assert "validation_pass_count" in payload
         assert "validation_abstain_count" in payload
