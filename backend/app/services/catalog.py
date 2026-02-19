@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from sqlmodel import select
 
@@ -68,6 +68,37 @@ def load_catalog() -> CatalogStore:
 
 def list_sources() -> List[SourceDocument]:
     return list(load_catalog().sources.values())
+
+
+def filter_sources(
+    language: Optional[str] = None,
+    topic: Optional[str] = None,
+    q: Optional[str] = None,
+) -> List[SourceDocument]:
+    catalog = load_catalog()
+    candidates = list(catalog.sources.values())
+
+    if language:
+        candidates = [s for s in candidates if language.lower() in s.language.lower()]
+
+    if topic:
+        topic_l = topic.lower()
+        source_ids = {
+            p.source_document_id
+            for p in catalog.passages.values()
+            if any(topic_l in tag.lower() for tag in p.topic_tags)
+        }
+        candidates = [s for s in candidates if s.id in source_ids]
+
+    if q:
+        q_l = q.lower()
+        candidates = [
+            s
+            for s in candidates
+            if q_l in s.title.lower() or q_l in s.author.lower() or q_l in s.id.lower()
+        ]
+
+    return candidates
 
 
 def seed_catalog_to_db() -> None:

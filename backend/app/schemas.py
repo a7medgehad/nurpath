@@ -31,6 +31,11 @@ class SourceDocument(BaseModel):
     citation_policy: str
 
 
+class SourceListResponse(BaseModel):
+    items: List[SourceDocument] = Field(default_factory=list)
+    total: int
+
+
 class Passage(BaseModel):
     id: str
     source_document_id: str

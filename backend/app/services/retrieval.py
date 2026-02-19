@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import List
 
@@ -26,8 +27,17 @@ class HybridRetriever:
         self.catalog = load_catalog()
 
     @staticmethod
+    def _normalize(text: str) -> str:
+        # Remove Arabic diacritics and normalize punctuation/noise for simple lexical recall.
+        text = re.sub(r"[\u064B-\u065F\u0670]", "", text)
+        text = text.lower()
+        text = re.sub(r"[^\w\u0600-\u06FF\s]", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
+    @staticmethod
     def classify_intent(question: str) -> TopicIntent:
-        q = question.lower()
+        q = HybridRetriever._normalize(question)
         if any(word in q for word in ["wudu", "وضوء", "طهارة", "fiqh", "حكم"]):
             return TopicIntent.fiqh
         if any(word in q for word in ["aqidah", "عقيدة", "iman", "إيمان"]):
@@ -40,8 +50,8 @@ class HybridRetriever:
 
     @staticmethod
     def _token_score(question: str, passage: Passage) -> float:
-        q_tokens = set(question.lower().split())
-        p_tokens = set((passage.arabic_text + " " + passage.english_text).lower().split())
+        q_tokens = set(HybridRetriever._normalize(question).split())
+        p_tokens = set(HybridRetriever._normalize(passage.arabic_text + " " + passage.english_text).split())
         if not q_tokens:
             return 0.0
         overlap = len(q_tokens.intersection(p_tokens))
