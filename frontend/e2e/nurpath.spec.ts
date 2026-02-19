@@ -1,13 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("NurPath end-to-end", () => {
-  test("Arabic ask flow shows evidence and comparison", async ({ page }) => {
+  test("Arabic ask flow shows evidence, comparison, and ikhtilaf badge", async ({ page }) => {
     await page.goto("/");
 
     await page.getByRole("button", { name: "اسأل" }).click();
 
     await expect(page.getByRole("heading", { name: "الإجابة" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "بطاقات الدليل" })).toBeVisible();
+    await expect(page.locator("span", { hasText: "اختلاف معتبر" })).toBeVisible();
   });
 
   test("English mode supports source explorer and quiz grading", async ({ page }) => {
@@ -43,5 +44,16 @@ test.describe("NurPath end-to-end", () => {
     await page.getByRole("button", { name: "Ask" }).click();
 
     await expect(page.getByText("Educational guidance only. Escalate to a qualified scholar.")).toBeVisible();
+  });
+
+  test("English non-comparative query shows insufficient-data status", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "English" }).click();
+
+    const mainQuestion = page.locator("textarea").first();
+    await mainQuestion.fill("What is ihsan in hadith jibril?");
+    await page.getByRole("button", { name: "Ask" }).click();
+
+    await expect(page.getByText("Insufficient Data")).toBeVisible();
   });
 });

@@ -28,6 +28,7 @@ def test_session_and_ask_flow() -> None:
         body = ask.json()
         assert "direct_answer" in body
         assert "evidence_cards" in body
+        assert "ikhtilaf_analysis" in body
         assert isinstance(body["confidence"], float)
         assert len(body["evidence_cards"]) >= 1
 
@@ -134,3 +135,49 @@ def test_langgraph_mermaid_endpoint() -> None:
         assert "graph" in mermaid.lower()
         assert "intent" in mermaid.lower()
         assert "retrieve" in mermaid.lower()
+
+
+def test_ikhtilaf_metadata_for_wudu_question() -> None:
+    with get_client() as client:
+        session = client.post(
+            "/v1/sessions",
+            json={"preferred_language": "en", "level": "beginner", "goals": ["fiqh"]},
+        )
+        sid = session.json()["session_id"]
+
+        ask = client.post(
+            "/v1/ask",
+            json={
+                "session_id": sid,
+                "question": "What is the ruling for wudu when touching spouse?",
+                "preferred_language": "en",
+            },
+        )
+        assert ask.status_code == 200
+        payload = ask.json()
+        analysis = payload["ikhtilaf_analysis"]
+        assert analysis["status"] == "ikhtilaf"
+        assert len(analysis["compared_schools"]) >= 2
+        assert len(analysis["conflict_pairs"]) >= 1
+
+
+def test_ikhtilaf_metadata_insufficient_for_non_comparative_topic() -> None:
+    with get_client() as client:
+        session = client.post(
+            "/v1/sessions",
+            json={"preferred_language": "en", "level": "beginner", "goals": ["aqidah"]},
+        )
+        sid = session.json()["session_id"]
+
+        ask = client.post(
+            "/v1/ask",
+            json={
+                "session_id": sid,
+                "question": "What is ihsan in hadith jibril?",
+                "preferred_language": "en",
+            },
+        )
+        assert ask.status_code == 200
+        payload = ask.json()
+        analysis = payload["ikhtilaf_analysis"]
+        assert analysis["status"] == "insufficient"

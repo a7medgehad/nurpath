@@ -153,6 +153,34 @@ export function NurPathApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language]);
 
+  function ikhtilafStatusLabel(status: "ikhtilaf" | "consensus" | "insufficient"): string {
+    if (language === "ar") {
+      if (status === "ikhtilaf") return "اختلاف معتبر";
+      if (status === "consensus") return "اتفاق";
+      return "بيانات غير كافية";
+    }
+    if (status === "ikhtilaf") return "Ikhtilaf";
+    if (status === "consensus") return "Consensus";
+    return "Insufficient Data";
+  }
+
+  function ikhtilafStatusStyle(status: "ikhtilaf" | "consensus" | "insufficient"): string {
+    if (status === "ikhtilaf") return "bg-amber-100 text-amber-900";
+    if (status === "consensus") return "bg-emerald-100 text-emerald-900";
+    return "bg-slate-100 text-slate-800";
+  }
+
+  function stanceLabel(stance: "invalidates" | "does_not_invalidate" | "unclear"): string {
+    if (language === "ar") {
+      if (stance === "invalidates") return "ناقض للوضوء";
+      if (stance === "does_not_invalidate") return "غير ناقض بمفرده";
+      return "غير صريح";
+    }
+    if (stance === "invalidates") return "Nullifies";
+    if (stance === "does_not_invalidate") return "Does Not Nullify";
+    return "Unclear";
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 md:px-8" dir={dir}>
       <section className="card-enter rounded-3xl border border-white/70 bg-white/80 p-6 shadow-soft backdrop-blur md:p-10">
@@ -318,17 +346,50 @@ export function NurPathApp() {
           </article>
 
           <article className="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-soft md:col-span-2">
-            <h3 className="text-lg font-bold text-ink">{language === "ar" ? "الاختلاف الفقهي" : "Opinion Comparison"}</h3>
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-lg font-bold text-ink">
+                {language === "ar" ? "الاختلاف الفقهي" : "Opinion Comparison"}
+              </h3>
+              {result.ikhtilaf_analysis && (
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${ikhtilafStatusStyle(
+                    result.ikhtilaf_analysis.status,
+                  )}`}
+                >
+                  {ikhtilafStatusLabel(result.ikhtilaf_analysis.status)}
+                </span>
+              )}
+            </div>
+            {result.ikhtilaf_analysis && (
+              <p className="mt-2 text-sm text-ink/80">{result.ikhtilaf_analysis.summary}</p>
+            )}
             <div className="mt-3 space-y-3">
               {result.opinion_comparison.length === 0 && (
                 <p className="text-sm text-ink/70">{language === "ar" ? "لا يوجد مقارنة متاحة." : "No comparison available."}</p>
               )}
               {result.opinion_comparison.map((item) => (
                 <div key={item.school_or_scholar} className="rounded-xl border border-ink/10 p-3">
-                  <p className="font-semibold text-ink">{item.school_or_scholar}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-ink">{item.school_or_scholar}</p>
+                    <span className="rounded-full bg-sand px-2 py-1 text-[10px] font-semibold uppercase text-ink/90">
+                      {stanceLabel(item.stance_type)}
+                    </span>
+                  </div>
                   <p className="text-sm text-ink/80">{item.stance_summary}</p>
                 </div>
               ))}
+              {result.ikhtilaf_analysis && result.ikhtilaf_analysis.conflict_pairs.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                  <p className="font-semibold">
+                    {language === "ar" ? "أزواج التعارض المكتشفة" : "Detected conflict pairs"}
+                  </p>
+                  {result.ikhtilaf_analysis.conflict_pairs.map((pair) => (
+                    <p key={`${pair.school_a}-${pair.school_b}-${pair.issue_topic}`} className="mt-1">
+                      {pair.school_a} ↔ {pair.school_b} ({pair.issue_topic})
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           </article>
 
